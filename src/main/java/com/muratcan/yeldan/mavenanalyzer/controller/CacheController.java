@@ -23,6 +23,7 @@ import java.util.Map;
 @Tag(name = "Cache Management", description = "API endpoints for managing application caches")
 public class CacheController {
 
+    private static final String MESSAGE = "message";
     private final VulnerabilityService vulnerabilityService;
     private final CacheManager cacheManager;
 
@@ -52,7 +53,7 @@ public class CacheController {
         clearCache("chartCache");
         clearCache("chartDataCache");
 
-        return ResponseEntity.ok(Map.of("message", "All application caches have been cleared"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "All application caches have been cleared"));
     }
 
     /**
@@ -68,7 +69,7 @@ public class CacheController {
     public ResponseEntity<Map<String, String>> clearVulnerabilityCache() {
         log.info("Clearing vulnerability cache");
         vulnerabilityService.clearAllVulnerabilityCaches();
-        return ResponseEntity.ok(Map.of("message", "Vulnerability cache has been cleared"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "Vulnerability cache has been cleared"));
     }
 
     /**
@@ -84,7 +85,7 @@ public class CacheController {
     public ResponseEntity<Map<String, String>> clearLicenseCache() {
         log.info("Clearing license cache");
         clearCache("licenseCache");
-        return ResponseEntity.ok(Map.of("message", "License cache has been cleared"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "License cache has been cleared"));
     }
 
     /**
@@ -101,7 +102,7 @@ public class CacheController {
         log.info("Clearing chart cache");
         clearCache("chartCache");
         clearCache("chartDataCache");
-        return ResponseEntity.ok(Map.of("message", "Chart cache has been cleared"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "Chart cache has been cleared"));
     }
 
     /**
@@ -117,7 +118,7 @@ public class CacheController {
     public ResponseEntity<Map<String, String>> clearVersionCache() {
         log.info("Clearing version cache");
         clearCache("versionEstimateCache");
-        return ResponseEntity.ok(Map.of("message", "Version cache has been cleared"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "Version cache has been cleared"));
     }
 
     /**

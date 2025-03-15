@@ -6,6 +6,7 @@ import com.muratcan.yeldan.mavenanalyzer.dto.chart.PieChartDataResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis;
 import com.muratcan.yeldan.mavenanalyzer.exception.ResourceNotFoundException;
 import com.muratcan.yeldan.mavenanalyzer.repository.DependencyAnalysisRepository;
+import com.muratcan.yeldan.mavenanalyzer.service.ChartCacheService;
 import com.muratcan.yeldan.mavenanalyzer.service.ChartDataService;
 import com.muratcan.yeldan.mavenanalyzer.service.ChartGeneratorService;
 import com.muratcan.yeldan.mavenanalyzer.service.DependencyAnalysisService;
@@ -13,7 +14,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -39,6 +39,7 @@ public class ChartController {
     private final ChartDataService chartDataService;
     private final DependencyAnalysisService dependencyAnalysisService;
     private final DependencyAnalysisRepository dependencyAnalysisRepository;
+    private final ChartCacheService chartCacheService;
 
     //
     // Server-side rendered chart endpoints (original implementation)
@@ -53,7 +54,7 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart
-        ChartResponse chartResponse = getOrGenerateDependencyUpdateChart(analysisId, analysis);
+        ChartResponse chartResponse = chartCacheService.getCachedDependencyUpdateChart(analysisId, analysis);
 
         // Extract just the filename from the path
         String fullPath = chartResponse.getChartPath();
@@ -61,12 +62,6 @@ public class ChartController {
         chartResponse.setChartPath(fileName);
 
         return ResponseEntity.ok(chartResponse);
-    }
-
-    // Cache the chart response directly, not the ResponseEntity
-    @Cacheable(value = "chartCache", key = "'dependency-updates-' + #analysisId")
-    private ChartResponse getOrGenerateDependencyUpdateChart(Long analysisId, DependencyAnalysis analysis) {
-        return chartGeneratorService.generateDependencyStatusChart(analysis);
     }
 
     @GetMapping("/vulnerabilities/{analysisId}")
@@ -78,7 +73,7 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart
-        ChartResponse chartResponse = getOrGenerateVulnerabilityChart(analysisId, analysis);
+        ChartResponse chartResponse = chartCacheService.getCachedVulnerabilityChart(analysisId, analysis);
 
         // Extract just the filename from the path
         String fullPath = chartResponse.getChartPath();
@@ -86,12 +81,6 @@ public class ChartController {
         chartResponse.setChartPath(fileName);
 
         return ResponseEntity.ok(chartResponse);
-    }
-
-    // Cache the chart response directly, not the ResponseEntity
-    @Cacheable(value = "chartCache", key = "'vulnerabilities-' + #analysisId")
-    private ChartResponse getOrGenerateVulnerabilityChart(Long analysisId, DependencyAnalysis analysis) {
-        return chartGeneratorService.generateVulnerabilityChart(analysis);
     }
 
     @GetMapping("/license-distribution/{analysisId}")
@@ -103,7 +92,7 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart
-        ChartResponse chartResponse = getOrGenerateLicenseDistributionChart(analysisId, analysis);
+        ChartResponse chartResponse = chartCacheService.getCachedLicenseDistributionChart(analysisId, analysis);
         chartResponse.setTitle("License Distribution");
         chartResponse.setDescription("Distribution of licenses used by dependencies in the project");
 
@@ -113,13 +102,6 @@ public class ChartController {
         chartResponse.setChartPath(fileName);
 
         return ResponseEntity.ok(chartResponse);
-    }
-
-    // Cache the chart response directly, not the ResponseEntity
-    @Cacheable(value = "chartCache", key = "'license-distribution-' + #analysisId")
-    private ChartResponse getOrGenerateLicenseDistributionChart(Long analysisId, DependencyAnalysis analysis) {
-        // For demo purposes, we'll reuse the dependency status chart since we don't have a dedicated license chart yet
-        return chartGeneratorService.generateDependencyStatusChart(analysis);
     }
 
     @GetMapping("/image/{fileName:.+}")
@@ -161,15 +143,9 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart data
-        PieChartDataResponse chartData = getOrGenerateDependencyStatusChartData(analysisId, analysis);
+        PieChartDataResponse chartData = chartCacheService.getCachedDependencyStatusChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
-    }
-
-    // Cache the chart data directly, not the ResponseEntity
-    @Cacheable(value = "chartDataCache", key = "'dependency-status-' + #analysisId")
-    private PieChartDataResponse getOrGenerateDependencyStatusChartData(Long analysisId, DependencyAnalysis analysis) {
-        return chartDataService.generateDependencyStatusChartData(analysis);
     }
 
     @GetMapping("/data/vulnerability-status/{analysisId}")
@@ -182,15 +158,9 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart data
-        PieChartDataResponse chartData = getOrGenerateVulnerabilityStatusChartData(analysisId, analysis);
+        PieChartDataResponse chartData = chartCacheService.getCachedVulnerabilityStatusChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
-    }
-
-    // Cache the chart data directly, not the ResponseEntity
-    @Cacheable(value = "chartDataCache", key = "'vulnerability-status-' + #analysisId")
-    private PieChartDataResponse getOrGenerateVulnerabilityStatusChartData(Long analysisId, DependencyAnalysis analysis) {
-        return chartDataService.generateVulnerabilityStatusChartData(analysis);
     }
 
     @GetMapping("/data/vulnerability-severity/{analysisId}")
@@ -203,15 +173,9 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart data
-        BarChartDataResponse chartData = getOrGenerateVulnerabilitySeverityChartData(analysisId, analysis);
+        BarChartDataResponse chartData = chartCacheService.getCachedVulnerabilitySeverityChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
-    }
-
-    // Cache the chart data directly, not the ResponseEntity
-    @Cacheable(value = "chartDataCache", key = "'vulnerability-severity-' + #analysisId")
-    private BarChartDataResponse getOrGenerateVulnerabilitySeverityChartData(Long analysisId, DependencyAnalysis analysis) {
-        return chartDataService.generateVulnerabilitySeverityChartData(analysis);
     }
 
     @GetMapping("/data/license-distribution/{analysisId}")
@@ -224,15 +188,9 @@ public class ChartController {
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
 
         // Generate the chart data
-        PieChartDataResponse chartData = getOrGenerateLicenseDistributionChartData(analysisId, analysis);
+        PieChartDataResponse chartData = chartCacheService.getCachedLicenseDistributionChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
-    }
-
-    // Cache the chart data directly, not the ResponseEntity
-    @Cacheable(value = "chartDataCache", key = "'license-distribution-' + #analysisId")
-    private PieChartDataResponse getOrGenerateLicenseDistributionChartData(Long analysisId, DependencyAnalysis analysis) {
-        return chartDataService.generateLicenseDistributionChartData(analysis);
     }
 
     /**

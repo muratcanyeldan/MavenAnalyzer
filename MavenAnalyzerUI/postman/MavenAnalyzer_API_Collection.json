@@ -1,0 +1,334 @@
+{
+  "info": {
+    "name": "Maven Analyzer API",
+    "description": "API collection for Maven Analyzer application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Get All Projects",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"]
+            },
+            "description": "Retrieve all projects"
+          }
+        },
+        {
+          "name": "Get Project by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}"]
+            },
+            "description": "Retrieve a specific project by ID"
+          }
+        },
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Project\",\n  \"description\": \"A sample project for testing\",\n  \"groupId\": \"com.example\",\n  \"artifactId\": \"sample-project\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a new project"
+          }
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Project\",\n  \"description\": \"An updated project\",\n  \"groupId\": \"com.example\",\n  \"artifactId\": \"updated-project\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Update an existing project"
+          }
+        },
+        {
+          "name": "Delete Project",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}"]
+            },
+            "description": "Delete a project"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analyses",
+      "item": [
+        {
+          "name": "Get All Analyses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analyses",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses"]
+            },
+            "description": "Retrieve all analyses history"
+          }
+        },
+        {
+          "name": "Get Analysis by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analyses/{{analysisId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses", "{{analysisId}}"]
+            },
+            "description": "Retrieve a specific analysis by ID"
+          }
+        },
+        {
+          "name": "Get Analyses by Project",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analyses/project/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses", "project", "{{projectId}}"]
+            },
+            "description": "Retrieve analyses history for a specific project"
+          }
+        },
+        {
+          "name": "Get Latest Analysis for Project",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analyses/project/{{projectId}}/latest",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses", "project", "{{projectId}}", "latest"]
+            },
+            "description": "Retrieve the latest analysis for a project"
+          }
+        },
+        {
+          "name": "Create Analysis",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/analyses/project/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses", "project", "{{projectId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pomContent\": \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<project xmlns=\\\"http://maven.apache.org/POM/4.0.0\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xsi:schemaLocation=\\\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\\\">\\n  <modelVersion>4.0.0</modelVersion>\\n  <groupId>com.example</groupId>\\n  <artifactId>sample-project</artifactId>\\n  <version>1.0.0</version>\\n  <dependencies>\\n    <dependency>\\n      <groupId>org.springframework.boot</groupId>\\n      <artifactId>spring-boot-starter-web</artifactId>\\n      <version>2.7.3</version>\\n    </dependency>\\n  </dependencies>\\n</project>\",\n  \"checkVulnerabilities\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a new analysis for a project"
+          }
+        },
+        {
+          "name": "Delete Analysis",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/analyses/{{analysisId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses", "{{analysisId}}"]
+            },
+            "description": "Delete an analysis"
+          }
+        },
+        {
+          "name": "Get Vulnerability Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analyses/{{analysisId}}/vulnerability-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyses", "{{analysisId}}", "vulnerability-status"]
+            },
+            "description": "Get the current status of vulnerability scanning for an analysis"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Charts",
+      "item": [
+        {
+          "name": "Legacy Chart Endpoints",
+          "item": [
+            {
+              "name": "Get Dependency Updates Chart",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/dependency-updates/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "dependency-updates", "{{analysisId}}"]
+                },
+                "description": "Generate and retrieve a chart showing dependency update status"
+              }
+            },
+            {
+              "name": "Get Vulnerabilities Chart",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/vulnerabilities/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "vulnerabilities", "{{analysisId}}"]
+                },
+                "description": "Generate and retrieve a chart showing vulnerability status"
+              }
+            },
+            {
+              "name": "Get License Distribution Chart",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/license-distribution/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "license-distribution", "{{analysisId}}"]
+                },
+                "description": "Generate and retrieve a chart showing license distribution"
+              }
+            }
+          ]
+        },
+        {
+          "name": "New Chart Data Endpoints",
+          "item": [
+            {
+              "name": "Get Dependency Status Chart Data",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/data/dependency-status/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "data", "dependency-status", "{{analysisId}}"]
+                },
+                "description": "Retrieve raw data for client-side rendering of dependency status chart"
+              }
+            },
+            {
+              "name": "Get Vulnerability Status Chart Data",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/data/vulnerability-status/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "data", "vulnerability-status", "{{analysisId}}"]
+                },
+                "description": "Retrieve raw data for client-side rendering of vulnerability status chart"
+              }
+            },
+            {
+              "name": "Get Vulnerability Severity Chart Data",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/data/vulnerability-severity/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "data", "vulnerability-severity", "{{analysisId}}"]
+                },
+                "description": "Retrieve raw data for client-side rendering of vulnerability severity chart"
+              }
+            },
+            {
+              "name": "Get License Distribution Chart Data",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/charts/data/license-distribution/{{analysisId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["charts", "data", "license-distribution", "{{analysisId}}"]
+                },
+                "description": "Retrieve raw data for client-side rendering of license distribution chart"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Chart Image",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/charts/image/{{fileName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["charts", "image", "{{fileName}}"]
+            },
+            "description": "Retrieve a chart image by its file name"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "analysisId",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+} 

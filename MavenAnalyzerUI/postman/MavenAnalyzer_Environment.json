@@ -1,0 +1,25 @@
+{
+  "id": "8ebda0e5-4e6d-4e4b-a2d8-aa3b32e4b95c",
+  "name": "Maven Analyzer Local Environment",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "projectId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "analysisId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+} 

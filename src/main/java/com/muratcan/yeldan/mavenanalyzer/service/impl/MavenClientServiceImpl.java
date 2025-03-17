@@ -6,6 +6,7 @@ import com.muratcan.yeldan.mavenanalyzer.dto.MavenArtifactInfo;
 import com.muratcan.yeldan.mavenanalyzer.service.MavenClientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -99,9 +100,10 @@ public class MavenClientServiceImpl implements MavenClientService {
             log.debug("Latest version of {}:{} is {}. Current version (cleaned): {}",
                     groupId, artifactId, latestVersion, cleanedCurrentVersion);
 
-            // simplified comparison logic - in a production app, 
-            // we would use Maven's version comparison logic
-            return !cleanedCurrentVersion.equals(latestVersion);
+            ComparableVersion currentVersionComparable = new ComparableVersion(cleanedCurrentVersion);
+            ComparableVersion latestVersionComparable = new ComparableVersion(latestVersion);
+
+            return currentVersionComparable.compareTo(latestVersionComparable) < 0;
         } catch (Exception e) {
             log.error("Error checking for newer version of {}:{}: {}",
                     groupId, artifactId, e.getMessage(), e);
@@ -123,16 +125,17 @@ public class MavenClientServiceImpl implements MavenClientService {
                 return 0;
             }
 
-            if (cleanedCurrentVersion.equals(latestVersionInfo.get().getLatestVersion())) {
+            String latestVersion = latestVersionInfo.get().getLatestVersion();
+
+            ComparableVersion currentVersionComparable = new ComparableVersion(cleanedCurrentVersion);
+            ComparableVersion latestVersionComparable = new ComparableVersion(latestVersion);
+
+            if (currentVersionComparable.compareTo(latestVersionComparable) >= 0) {
                 return 0;
             }
 
-            // This is a simplified calculation - in a production app, we would fetch all versions
-            // and calculate the exact number of versions between current and latest
-            // For now, we'll estimate based on version numbers
-            String latestVersion = latestVersionInfo.get().getLatestVersion();
-
-            // Basic semantic versioning comparison (simplified)
+            // In a production environment, we could fetch all versions between current and latest
+            // For now, we'll calculate a reasonable estimate of versions behind based on the version difference
             String[] currentParts = cleanedCurrentVersion.split("\\.");
             String[] latestParts = latestVersion.split("\\.");
 
@@ -140,29 +143,73 @@ public class MavenClientServiceImpl implements MavenClientService {
             int minorDiff = compareVersionParts(currentParts, latestParts, 1);
             int patchDiff = compareVersionParts(currentParts, latestParts, 2);
 
-            // Rough estimation of versions behind
-            int versionsBehind = Math.max(1, majorDiff * 100 + minorDiff * 10 + patchDiff);
+            int versionsBehind;
 
-            log.debug("Estimated versions behind for {}:{}: {}", groupId, artifactId, versionsBehind);
+            if (majorDiff > 0) {
+                versionsBehind = majorDiff * 10 + Math.min(minorDiff, 5);
+            } else if (minorDiff > 0) {
+                versionsBehind = minorDiff * 3 + Math.min(patchDiff, 5);
+            } else {
+                versionsBehind = Math.max(1, patchDiff);
+            }
+
+            log.debug("Estimated versions behind for {}:{}: {} (current: {}, latest: {})",
+                    groupId, artifactId, versionsBehind, cleanedCurrentVersion, latestVersion);
             return versionsBehind;
 
         } catch (Exception e) {
-            log.error("Error calculating versions behind for artifact: {}:{}", groupId, artifactId, e);
+            log.error("Error calculating versions behind for artifact: {}:{}: {}",
+                    groupId, artifactId, e.getMessage(), e);
             return 0;
         }
     }
 
+    /**
+     * Compare version parts and handle non-numeric version components
+     *
+     * @param currentParts The parts of the current version (split by ".")
+     * @param latestParts  The parts of the latest version (split by ".")
+     * @param index        The index of the part to compare (0=major, 1=minor, 2=patch)
+     * @return The difference between the parts, or 0 if not comparable
+     */
     private int compareVersionParts(String[] currentParts, String[] latestParts, int index) {
         if (currentParts.length <= index || latestParts.length <= index) {
+            if (latestParts.length > index) {
+                try {
+                    return Integer.parseInt(latestParts[index]);
+                } catch (NumberFormatException e) {
+                    ComparableVersion latestPartVersion = new ComparableVersion(latestParts[index]);
+                    return latestPartVersion.compareTo(new ComparableVersion("0"));
+                }
+            }
             return 0;
         }
 
         try {
-            int current = Integer.parseInt(currentParts[index]);
-            int latest = Integer.parseInt(latestParts[index]);
+            int current = Integer.parseInt(extractNumericPart(currentParts[index]));
+            int latest = Integer.parseInt(extractNumericPart(latestParts[index]));
             return Math.max(0, latest - current);
         } catch (NumberFormatException e) {
-            return 0;
+            ComparableVersion currentPartVersion = new ComparableVersion(currentParts[index]);
+            ComparableVersion latestPartVersion = new ComparableVersion(latestParts[index]);
+
+            int comparison = latestPartVersion.compareTo(currentPartVersion);
+            return comparison > 0 ? 1 : 0;
         }
+    }
+
+    private String extractNumericPart(String versionPart) {
+        if (versionPart.contains("-")) {
+            return versionPart.split("-")[0];
+        }
+        StringBuilder numericPart = new StringBuilder();
+        for (char c : versionPart.toCharArray()) {
+            if (Character.isDigit(c)) {
+                numericPart.append(c);
+            } else {
+                break;
+            }
+        }
+        return !numericPart.isEmpty() ? numericPart.toString() : "0";
     }
 } 

@@ -53,9 +53,6 @@ public class Dependency {
     @Column(name = "is_vulnerable")
     private Boolean isVulnerable;
 
-    @Column(name = "versions_behind")
-    private Integer versionsBehind;
-
     @Column(name = "vulnerable_count")
     private Integer vulnerableCount;
 

@@ -361,7 +361,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 .currentVersion(currentVersion)
                 .isOutdated(false)
                 .isVulnerable(false)
-                .versionsBehind(0)
                 .vulnerableCount(0)
                 .scope(scope)
                 .license(license == null || "null".equals(license) ? LICENSE_UNKNOWN : license);
@@ -427,7 +426,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
 
             if (currentVersion.contains(MANAGED_BY_BOM)) {
                 builder.isOutdated(false);
-                builder.versionsBehind(0);
             } else {
                 updateVersionComparisonInformation(builder, groupId, artifactId, currentVersion, latestVersion);
             }
@@ -445,10 +443,8 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         builder.isOutdated(isOutdated);
 
         if (isOutdated) {
-            int versionsBehind = mavenClientService.getVersionsBehind(groupId, artifactId, cleanedCurrentVersion);
-            builder.versionsBehind(versionsBehind);
-            log.debug("Dependency {}:{} is outdated. Current: {} (cleaned: {}), Latest: {}, Versions behind: {}",
-                    groupId, artifactId, currentVersion, cleanedCurrentVersion, latestVersion, versionsBehind);
+            log.debug("Dependency {}:{} is outdated. Current: {} (cleaned: {}), Latest: {}",
+                    groupId, artifactId, currentVersion, cleanedCurrentVersion, latestVersion);
         }
     }
 
@@ -537,7 +533,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 .latestVersion(dependency.getLatestVersion())
                 .isOutdated(Boolean.TRUE.equals(dependency.getIsOutdated()))
                 .isVulnerable(Boolean.TRUE.equals(dependency.getIsVulnerable()))
-                .versionsBehind(dependency.getVersionsBehind())
                 .vulnerableCount(dependency.getVulnerableCount())
                 .scope(dependency.getScope())
                 .license(dependency.getLicense())

@@ -20,7 +20,6 @@ public class DependencyResponse {
     private String latestVersion;
     private boolean isOutdated;
     private boolean isVulnerable;
-    private Integer versionsBehind;
     private Integer vulnerableCount;
     private String scope;
     private String license;

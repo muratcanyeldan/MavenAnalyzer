@@ -984,7 +984,7 @@ const AnalysisDetail = () => {
                           </Typography>
                         ) : dependency.isOutdated ? (
                           <Typography color="warning.main" fontWeight="medium">
-                            {dependency.latestVersion} ({dependency.versionsBehind} versions behind)
+                            {dependency.latestVersion}
                           </Typography>
                         ) : (
                           dependency.latestVersion

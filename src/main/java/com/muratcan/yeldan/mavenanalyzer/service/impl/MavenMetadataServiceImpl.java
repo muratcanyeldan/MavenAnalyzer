@@ -2,6 +2,7 @@ package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
 import com.muratcan.yeldan.mavenanalyzer.config.DynamicCacheProperties;
 import com.muratcan.yeldan.mavenanalyzer.service.MavenMetadataService;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
@@ -9,6 +10,7 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -31,10 +33,17 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
 
     private final DynamicCacheProperties cacheProperties;
 
+    @Getter
+    private boolean licenseCacheEnabled;
+
+    @Getter
+    private boolean versionEstimateCacheEnabled;
+
     public MavenMetadataServiceImpl(DynamicCacheProperties cacheProperties, ObjectProvider<MavenMetadataService> mavenMetadataServiceProvider) {
         this.restTemplate = new RestTemplate();
         this.cacheProperties = cacheProperties;
         this.mavenMetadataServiceProvider = mavenMetadataServiceProvider;
+        updateCacheProperties();
     }
 
     private MavenMetadataService getProxiedSelf() {
@@ -43,7 +52,7 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
 
     @Override
     @Cacheable(value = "licenseCache", key = "#groupId + ':' + #artifactId + ':' + #version",
-            unless = "#result.isEmpty()", condition = "#root.target.cacheProperties.licenseCacheEnabled")
+            unless = "#result.isEmpty()", condition = "#root.target.licenseCacheEnabled")
     public Optional<String> fetchLicenseInfo(String groupId, String artifactId, String version) {
         try {
             String groupPath = groupId.replace('.', '/');
@@ -55,47 +64,25 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
 
             log.debug("Fetching POM from: {}", pomUrl);
 
-            String pomContent = restTemplate.getForObject(pomUrl, String.class);
-            if (pomContent == null) {
-                log.warn("Could not fetch POM for {}:{}:{}", groupId, artifactId, version);
-                return Optional.empty();
+            ResponseEntity<String> response = restTemplate.getForEntity(pomUrl, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String licenseInfo = extractLicenseFromPom(response.getBody());
+                log.debug("Extracted license info for {}:{}:{}: {}", groupId, artifactId, version,
+                        licenseInfo.isEmpty() ? "None found" : licenseInfo);
+                return Optional.of(licenseInfo);
             }
 
-            MavenXpp3Reader reader = new MavenXpp3Reader();
-            Model model = reader.read(new StringReader(pomContent));
-
-            Optional<String> license = extractLicenseFromModel(model);
-
-            if (license.isEmpty() && model.getParent() != null) {
-                String parentGroupId = model.getParent().getGroupId();
-                String parentArtifactId = model.getParent().getArtifactId();
-                String parentVersion = model.getParent().getVersion();
-
-                log.debug("No license found in artifact POM, checking parent: {}:{}:{}",
-                        parentGroupId, parentArtifactId, parentVersion);
-
-                Optional<String> parentLicense = getProxiedSelf().fetchLicenseInfo(parentGroupId, parentArtifactId, parentVersion);
-                if (parentLicense.isPresent()) {
-                    log.info("Found license in parent POM for {}:{}:{}: {}",
-                            groupId, artifactId, version, parentLicense.get());
-                    license = parentLicense;
-                }
-            }
-
-            return license;
-
+            return Optional.empty();
         } catch (RestClientException e) {
-            log.warn("Error fetching POM for {}:{}:{}: {}", groupId, artifactId, version, e.getMessage());
-        } catch (IOException | XmlPullParserException e) {
-            log.warn("Error parsing POM for {}:{}:{}: {}", groupId, artifactId, version, e.getMessage());
+            log.warn("Error fetching license info for {}:{}:{}: {}", groupId, artifactId, version, e.getMessage());
+            return Optional.empty();
         }
-
-        return Optional.empty();
     }
 
     @Override
     @Cacheable(value = "versionEstimateCache", key = "#groupId + ':' + #artifactId + ':' + #parentGroupId + ':' + #parentArtifactId + ':' + #parentVersion",
-            unless = "#result.isEmpty()", condition = "#root.target.cacheProperties.versionEstimateCacheEnabled")
+            unless = "#result.isEmpty()", condition = "#root.target.versionEstimateCacheEnabled")
     public Optional<String> estimateBomManagedVersion(String groupId, String artifactId,
                                                       String parentGroupId, String parentArtifactId, String parentVersion) {
         if (groupId == null || artifactId == null) {
@@ -117,14 +104,31 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
         return Optional.empty();
     }
 
-    private Optional<String> extractLicenseFromModel(Model model) {
+    private String extractLicenseFromPom(String pomContent) {
+        try {
+            MavenXpp3Reader reader = new MavenXpp3Reader();
+            Model model = reader.read(new StringReader(pomContent));
+            return extractLicenseFromModel(model);
+        } catch (IOException | XmlPullParserException e) {
+            log.warn("Error parsing POM: {}", e.getMessage());
+            return "";
+        }
+    }
+
+    private String extractLicenseFromModel(Model model) {
         List<License> licenses = model.getLicenses();
         if (licenses != null && !licenses.isEmpty()) {
-            String licenseStr = licenses.stream()
+            return licenses.stream()
                     .map(License::getName)
                     .collect(Collectors.joining(", "));
-            return Optional.of(licenseStr);
         }
-        return Optional.empty();
+        return "";
+    }
+
+    public void updateCacheProperties() {
+        this.licenseCacheEnabled = cacheProperties.isLicenseCacheEnabled();
+        this.versionEstimateCacheEnabled = cacheProperties.isVersionEstimateCacheEnabled();
+        log.debug("Updated cache properties: license={}, versionEstimate={}",
+                licenseCacheEnabled, versionEstimateCacheEnabled);
     }
 } 

@@ -17,6 +17,7 @@ public class CachePropertiesSyncService {
 
     private final DynamicCacheProperties dynamicCacheProperties;
     private final CacheManagementService cacheManagementService;
+    private final MavenMetadataServiceImpl mavenMetadataService;
 
     /**
      * Update the cache-enabled properties when application settings are changed
@@ -34,6 +35,7 @@ public class CachePropertiesSyncService {
 
         boolean cacheEnabled = Boolean.TRUE.equals(settings.getCacheEnabled());
         dynamicCacheProperties.updateAllCacheProperties(cacheEnabled);
+        mavenMetadataService.updateCacheProperties();
 
         if (!cacheEnabled) {
             log.info("Caching was disabled, clearing all existing cache entries");

@@ -1,7 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.controller;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.ProjectRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.ProjectResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.ProjectRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ProjectResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.Project;
 import com.muratcan.yeldan.mavenanalyzer.exception.ResourceNotFoundException;
 import com.muratcan.yeldan.mavenanalyzer.repository.ProjectRepository;
@@ -37,6 +37,7 @@ import java.util.Map;
 @Tag(name = "Project Management", description = "API endpoints for managing projects")
 public class ProjectController {
 
+    private static final String ERROR = "error";
     private final ProjectService projectService;
     private final ProjectRepository projectRepository;
 
@@ -113,29 +114,25 @@ public class ProjectController {
             log.warn("No default POM path set for project ID: {}", id);
             return ResponseEntity
                     .badRequest()
-                    .body(Map.of("error", "No default POM path set for this project"));
+                    .body(Map.of(ERROR, "No default POM path set for this project"));
         }
 
-        // Construct the full path to pom.xml
         String pomPath = project.getDefaultPomPath();
         if (!pomPath.endsWith("pom.xml")) {
             pomPath = Paths.get(pomPath, "pom.xml").toString();
         }
 
-        // Try to read the file
         try {
             Path path = Paths.get(pomPath);
             if (!Files.exists(path)) {
                 log.warn("POM file not found at path: {}", pomPath);
                 return ResponseEntity
                         .status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "POM file not found at path: " + pomPath));
+                        .body(Map.of(ERROR, "POM file not found at path: " + pomPath));
             }
 
-            // Read the file content
             String content = Files.readString(path);
 
-            // Return the content
             return ResponseEntity.ok(Map.of(
                     "content", content,
                     "path", pomPath
@@ -144,7 +141,7 @@ public class ProjectController {
             log.error("Error reading POM file from path: {}", pomPath, e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error reading POM file: " + e.getMessage()));
+                    .body(Map.of(ERROR, "Error reading POM file: " + e.getMessage()));
         }
     }
 } 

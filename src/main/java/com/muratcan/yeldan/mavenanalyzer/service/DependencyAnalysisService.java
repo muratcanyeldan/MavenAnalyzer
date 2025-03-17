@@ -1,9 +1,9 @@
 package com.muratcan.yeldan.mavenanalyzer.service;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.AnalysisRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.AnalysisResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.DependencyResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.HistoryResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AnalysisRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.AnalysisResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.DependencyResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.HistoryResponse;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.muratcan.yeldan.mavenanalyzer.dto;
+package com.muratcan.yeldan.mavenanalyzer.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/**
- * Response DTO for dependency information
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -27,7 +24,7 @@ public class DependencyResponse {
     private Integer vulnerableCount;
     private String scope;
     private String license;
-    private String status; // Will contain a human-readable status like "Up-to-date", "Outdated", "Vulnerable", etc.
+    private String status;
     private boolean isBomManaged;
     private String estimatedVersion;
     private List<VulnerabilityResponse> vulnerabilities;

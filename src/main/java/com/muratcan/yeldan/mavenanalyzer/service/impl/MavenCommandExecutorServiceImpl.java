@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -20,12 +21,10 @@ import java.util.regex.Pattern;
 public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorService {
 
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("<(.+)>(.+)</(.+)>");
-    // Cache to store project properties
     private final Map<String, Map<String, String>> projectPropertiesCache = new HashMap<>();
 
     @Override
     public Map<String, String> getProjectProperties(String pomDirectory) {
-        // Return cached properties if available
         if (projectPropertiesCache.containsKey(pomDirectory)) {
             return projectPropertiesCache.get(pomDirectory);
         }
@@ -37,15 +36,9 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         }
 
         try {
-            // Extract project properties from Maven
             properties = extractMavenProjectProperties(pomDirectory);
-
-            // Extract dependency versions for more complete resolution
             enrichWithDependencyVersions(pomDirectory, properties);
-
-            // Cache the properties
             projectPropertiesCache.put(pomDirectory, properties);
-
         } catch (IOException | InterruptedException e) {
             handleMavenCommandError(e);
         }
@@ -53,9 +46,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return properties;
     }
 
-    /**
-     * Validates if the POM directory is usable
-     */
     private boolean isValidPomDirectory(String pomDirectory) {
         if (pomDirectory == null || pomDirectory.trim().isEmpty()) {
             log.warn("POM directory is null or empty");
@@ -64,9 +54,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return true;
     }
 
-    /**
-     * Extract Maven project properties using help:evaluate
-     */
     private Map<String, String> extractMavenProjectProperties(String pomDirectory)
             throws IOException, InterruptedException {
 
@@ -91,9 +78,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return properties;
     }
 
-    /**
-     * Parse a property line from Maven output
-     */
     private void parsePropertyLine(String line, Map<String, String> properties) {
         Matcher matcher = PROPERTY_PATTERN.matcher(line);
         if (matcher.find()) {
@@ -104,9 +88,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         }
     }
 
-    /**
-     * Log the result of a Maven command execution
-     */
     private void logMavenCommandResult(int exitCode, int propertiesCount) {
         if (exitCode != 0) {
             log.warn("Maven properties command exited with non-zero exit code: {}", exitCode);
@@ -115,9 +96,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         }
     }
 
-    /**
-     * Enrich properties map with dependency versions
-     */
     private void enrichWithDependencyVersions(String pomDirectory, Map<String, String> properties)
             throws IOException, InterruptedException {
 
@@ -127,14 +105,11 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
             File dependencyFile = new File(pomDirectory + "/target/all-dependencies.txt");
             if (dependencyFile.exists()) {
                 parseDependencyFile(dependencyFile, properties);
-                dependencyFile.delete();
+                Files.delete(dependencyFile.toPath());
             }
         }
     }
 
-    /**
-     * Generate a dependency list file using Maven
-     */
     private int generateDependencyList(String pomDirectory) throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.directory(new File(pomDirectory));
@@ -149,9 +124,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return process.waitFor();
     }
 
-    /**
-     * Parse the dependency list file and extract versions
-     */
     private void parseDependencyFile(File dependencyFile, Map<String, String> properties)
             throws IOException {
 
@@ -164,9 +136,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         }
     }
 
-    /**
-     * Extract version information from a single dependency line
-     */
     private void extractVersionFromDependencyLine(String line, Map<String, String> properties) {
         // Format is typically: groupId:artifactId:jar:version:scope
         if (line.contains(":")) {
@@ -174,10 +143,8 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
             if (parts.length >= 4) {
                 String groupId = parts[0];
                 String artifactId = parts[1];
-                // Skip packaging part which is typically the 3rd element
                 String version = parts[3];
 
-                // Store as both artifactId.version and groupId:artifactId
                 properties.put(artifactId + ".version", version);
                 properties.put(groupId + ":" + artifactId, version);
                 log.debug("Stored dependency: {}:{} = {}", groupId, artifactId, version);
@@ -185,9 +152,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         }
     }
 
-    /**
-     * Handle errors from Maven command execution
-     */
     private void handleMavenCommandError(Exception e) {
         log.error("Error executing Maven command: {}", e.getMessage(), e);
         if (e instanceof InterruptedException) {
@@ -205,13 +169,11 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
             log.info("Resolving managed dependency version for {}:{} in directory: {}",
                     groupId, artifactId, pomDirectory);
 
-            // Try to find version in existing properties
             Optional<String> versionFromProperties = findVersionInProperties(groupId, artifactId, pomDirectory);
             if (versionFromProperties.isPresent()) {
                 return versionFromProperties;
             }
 
-            // As a last resort, run Maven to resolve this specific dependency
             return resolveSpecificDependency(groupId, artifactId, pomDirectory);
 
         } catch (IOException | InterruptedException e) {
@@ -220,14 +182,9 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         }
     }
 
-    /**
-     * Try to find a dependency version in the existing properties
-     */
     private Optional<String> findVersionInProperties(String groupId, String artifactId, String pomDirectory) {
-        // Get the properties map
         Map<String, String> properties = getProjectProperties(pomDirectory);
 
-        // Check for the version using various possible keys
         String version = properties.get(artifactId + ".version");
         if (version == null) {
             version = properties.get(groupId + ":" + artifactId);
@@ -241,9 +198,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return Optional.empty();
     }
 
-    /**
-     * Resolve a specific dependency using Maven
-     */
     private Optional<String> resolveSpecificDependency(String groupId, String artifactId, String pomDirectory)
             throws IOException, InterruptedException {
 
@@ -253,7 +207,7 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
             File dependencyFile = new File(pomDirectory + "/target/specific-dependency.txt");
             if (dependencyFile.exists()) {
                 Optional<String> version = extractVersionFromDependencyFile(groupId, artifactId, dependencyFile);
-                dependencyFile.delete();
+                Files.delete(dependencyFile.toPath());
                 return version;
             }
         }
@@ -262,9 +216,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return Optional.empty();
     }
 
-    /**
-     * Run Maven dependency:resolve for a specific artifact
-     */
     private int runDependencyResolveCommand(String groupId, String artifactId, String pomDirectory)
             throws IOException, InterruptedException {
 
@@ -283,9 +234,6 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
         return process.waitFor();
     }
 
-    /**
-     * Extract version from the dependency:resolve output file
-     */
     private Optional<String> extractVersionFromDependencyFile(String groupId, String artifactId, File dependencyFile)
             throws IOException {
 
@@ -294,9 +242,7 @@ public class MavenCommandExecutorServiceImpl implements MavenCommandExecutorServ
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
 
-                // Look for lines with the dependency information
                 if (line.contains(groupId + ":" + artifactId)) {
-                    // Try to extract version from the line
                     String[] parts = line.split(":");
                     if (parts.length >= 4) {
                         String resolvedVersion = parts[3];

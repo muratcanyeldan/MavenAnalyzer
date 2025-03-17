@@ -1,10 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.service;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.ReportResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ReportResponse;
 
-/**
- * Service for generating analysis reports
- */
 public interface ReportService {
 
     /**

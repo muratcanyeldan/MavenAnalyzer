@@ -2,9 +2,6 @@ package com.muratcan.yeldan.mavenanalyzer.service;
 
 import com.muratcan.yeldan.mavenanalyzer.dto.DependencyInfo;
 
-/**
- * Service for enriching dependencies with license information
- */
 public interface LicenseEnricherService {
 
     /**
@@ -12,7 +9,7 @@ public interface LicenseEnricherService {
      * This might fetch from Maven Central or other sources
      *
      * @param dependencyInfo The dependency info to enrich
-     * @return The enriched dependency info (may be the same object, modified)
+     * @return The enriched dependency info (maybe the same object, modified)
      */
     DependencyInfo enrichWithLicenseInfo(DependencyInfo dependencyInfo);
 

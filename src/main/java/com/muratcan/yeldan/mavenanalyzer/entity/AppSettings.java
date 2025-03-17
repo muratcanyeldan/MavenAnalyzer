@@ -32,14 +32,12 @@ public class AppSettings {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // General settings
     @Column(name = "settings_key", nullable = false, unique = true)
     private String key;
 
     @Column(name = "settings_name")
     private String name;
 
-    // License settings
     @Column(name = "license_checking_enabled", nullable = false)
     private Boolean licenseCheckingEnabled;
 
@@ -48,21 +46,18 @@ public class AppSettings {
     @Column(name = "license")
     private List<String> restrictedLicenses = new ArrayList<>();
 
-    // Vulnerability settings
     @Column(name = "vulnerability_checking_enabled", nullable = false)
     private Boolean vulnerabilityCheckingEnabled;
 
     @Column(name = "vulnerability_check_delay")
     private Integer vulnerabilityCheckDelay;
 
-    // Cache settings
     @Column(name = "cache_enabled", nullable = false)
     private Boolean cacheEnabled;
 
     @Column(name = "cache_duration_hours")
     private Integer cacheDurationHours;
 
-    // Notification settings
     @Column(name = "show_notifications", nullable = false)
     private Boolean showNotifications;
 

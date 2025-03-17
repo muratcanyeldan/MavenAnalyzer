@@ -7,10 +7,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
-/**
- * Configuration class for enabling asynchronous processing.
- * This is necessary for the @Async annotations in the VulnerabilityService.
- */
 @Configuration
 @EnableAsync
 public class AsyncConfig {

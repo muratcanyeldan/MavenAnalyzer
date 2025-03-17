@@ -1,13 +1,13 @@
 package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.AnalysisRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.AnalysisResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsRequest;
 import com.muratcan.yeldan.mavenanalyzer.dto.DependencyInfo;
-import com.muratcan.yeldan.mavenanalyzer.dto.DependencyResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.HistoryResponse;
 import com.muratcan.yeldan.mavenanalyzer.dto.MavenArtifactInfo;
-import com.muratcan.yeldan.mavenanalyzer.dto.VulnerabilityResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AnalysisRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AppSettingsRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.AnalysisResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.DependencyResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.HistoryResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.VulnerabilityResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.Dependency;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis.VulnerabilityCheckStatus;
@@ -44,13 +44,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DependencyAnalysisServiceImpl implements DependencyAnalysisService {
 
+    private static final String LICENSE_UNKNOWN = "Unknown";
+    private static final String STATUS_BOM_MANAGED = "BOM Managed";
+    private static final String STATUS_OUTDATED = "Outdated";
+    private static final String STATUS_UP_TO_DATE = "Up-to-date";
+    private static final String STATUS_UNKNOWN = "Unknown";
+    private static final String PROJECT_NOT_FOUND_WITH_ID = "Project not found with ID: ";
+    private static final String ANALYSIS_NOT_FOUND_WITH_ID = "Analysis not found with ID: ";
+    private static final String DEPENDENCY_NOT_FOUND_WITH_ID = "Dependency not found with ID: ";
+    private static final String NO_ANALYSIS_FOR_PROJECT = "No analysis found for project ID: ";
+    private static final String MANAGED_BY_BOM = "MANAGED_BY_BOM";
     private final ProjectRepository projectRepository;
     private final DependencyAnalysisRepository dependencyAnalysisRepository;
     private final DependencyRepository dependencyRepository;
@@ -70,19 +79,16 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         try {
             long startTime = System.currentTimeMillis();
 
-            // If project ID is provided, find the project
             Project project = null;
             if (request.getProjectId() != null) {
                 project = projectRepository.findById(request.getProjectId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + request.getProjectId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + request.getProjectId()));
 
-                // Check if project is active
                 if (project.getStatus() == Project.ProjectStatus.INACTIVE) {
                     throw new InactiveProjectException("Cannot analyze dependencies for inactive project: " + project.getName());
                 }
             }
 
-            // Parse POM content
             List<DependencyInfo> dependencyInfoList = pomParserService.parsePomDependencies(
                     request.getPomContent(),
                     request.getPomDirectoryPath(),
@@ -90,14 +96,12 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
             );
             log.info("Found {} dependencies in POM", dependencyInfoList.size());
 
-            // Set the initial vulnerability check status
             VulnerabilityCheckStatus initialStatus = request.isCheckVulnerabilities()
                     ? VulnerabilityCheckStatus.IN_PROGRESS
                     : VulnerabilityCheckStatus.NOT_STARTED;
 
-            // Create analysis entity
             DependencyAnalysis analysis = DependencyAnalysis.builder()
-                    .project(project) // This can be null for standalone analyses
+                    .project(project)
                     .pomContent(request.getPomContent())
                     .analysisDate(LocalDateTime.now())
                     .totalDependencies(dependencyInfoList.size())
@@ -108,19 +112,15 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                     .notifyOnCompletion(request.isNotifyOnCompletion())
                     .build();
 
-            // Now that we've properly initialized all required fields, save the analysis to get an ID
             analysis = dependencyAnalysisRepository.save(analysis);
             log.info("Created dependency analysis with ID: {}", analysis.getId());
 
-            // Process each dependency
             final List<Dependency> dependencies = new ArrayList<>();
 
-            // If license checking is requested, temporarily enable it in settings if not already enabled
             boolean originalLicenseCheckingState = false;
             if (request.isCheckLicenses()) {
                 originalLicenseCheckingState = appSettingsService.isLicenseCheckingEnabled();
                 if (!originalLicenseCheckingState) {
-                    // Temporarily enable license checking for this analysis
                     AppSettingsRequest enableLicenseChecking = new AppSettingsRequest();
                     enableLicenseChecking.setLicenseCheckingEnabled(true);
                     appSettingsService.updateSettings(enableLicenseChecking);
@@ -129,10 +129,9 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
             }
 
             for (DependencyInfo dependencyInfo : dependencyInfoList) {
-                Dependency dependency = processDependency(dependencyInfo, analysis, request.isCheckVulnerabilities());
+                Dependency dependency = processDependency(dependencyInfo, analysis);
                 dependencies.add(dependency);
 
-                // Update dependency counters
                 if (Boolean.TRUE.equals(dependency.getIsOutdated())) {
                     analysis.setOutdatedDependencies(analysis.getOutdatedDependencies() + 1);
                 } else if (dependency.getLatestVersion() != null) {
@@ -142,19 +141,15 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 }
             }
 
-            // Save all dependencies in batch
             dependencyRepository.saveAll(dependencies);
 
-            // Generate chart if needed
             if (!dependencies.isEmpty()) {
                 String chartPath = chartGeneratorService.generateDependencyStatusChart(analysis).getChartPath();
                 analysis.setChartPath(chartPath);
             }
 
-            // Save the updated analysis with statistics
             analysis = dependencyAnalysisRepository.save(analysis);
 
-            // If license checking was temporarily enabled, restore the original state
             if (request.isCheckLicenses() && !originalLicenseCheckingState) {
                 AppSettingsRequest restoreLicenseChecking = new AppSettingsRequest();
                 restoreLicenseChecking.setLicenseCheckingEnabled(originalLicenseCheckingState);
@@ -163,25 +158,19 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                         originalLicenseCheckingState, analysis.getId());
             }
 
-            // Important: Map to response DTO before starting vulnerability checks
-            // so we can return immediately
             AnalysisResponse response = mapToAnalysisResponse(analysis);
 
-            // If vulnerability checking is enabled, start the asynchronous vulnerability scanning process
             if (Boolean.TRUE.equals(request.isCheckVulnerabilities())) {
                 log.info("Scheduling asynchronous vulnerability scanning for analysis ID: {} (will run after transaction commit)", analysis.getId());
 
-                // Save a final reference to the analysis for use in the callback
                 final DependencyAnalysis finalAnalysis = analysis;
 
-                // Register a synchronization callback that will execute after the transaction successfully commits
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
                     @Override
                     public void afterCommit() {
                         try {
                             log.info("Transaction committed: initiating vulnerability scans for analysis ID: {}", finalAnalysis.getId());
 
-                            // Use the batch processing method instead of individual checks
                             vulnerabilityService.processDependenciesInBatches(finalAnalysis.getId());
 
                             log.info("Finished initiating batch vulnerability scans for analysis ID: {}", finalAnalysis.getId());
@@ -191,7 +180,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                     }
                 });
             } else {
-                // If we're not checking for vulnerabilities, mark it as completed
                 analysis.setVulnerabilityCheckStatus(VulnerabilityCheckStatus.COMPLETED);
                 dependencyAnalysisRepository.save(analysis);
             }
@@ -214,7 +202,7 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         log.debug("Fetching analysis with ID: {}", id);
 
         DependencyAnalysis analysis = dependencyAnalysisRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Analysis not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ANALYSIS_NOT_FOUND_WITH_ID + id));
 
         return mapToAnalysisResponse(analysis);
     }
@@ -224,9 +212,8 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
     public List<HistoryResponse> getAnalysisHistoryByProjectId(Long projectId) {
         log.debug("Fetching analysis history for project ID: {}", projectId);
 
-        // Check if project exists
         if (!projectRepository.existsById(projectId)) {
-            throw new ResourceNotFoundException("Project not found with ID: " + projectId);
+            throw new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + projectId);
         }
 
         List<DependencyAnalysis> analyses = dependencyAnalysisRepository.findByProjectIdOrderByAnalysisDateDesc(projectId);
@@ -241,15 +228,14 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
     public AnalysisResponse getLatestAnalysisByProjectId(Long projectId) {
         log.debug("Fetching latest analysis for project ID: {}", projectId);
 
-        // Check if project exists
         if (!projectRepository.existsById(projectId)) {
-            throw new ResourceNotFoundException("Project not found with ID: " + projectId);
+            throw new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + projectId);
         }
 
         DependencyAnalysis analysis = dependencyAnalysisRepository.findTopByProjectIdOrderByAnalysisDateDesc(projectId);
 
         if (analysis == null) {
-            throw new ResourceNotFoundException("No analysis found for project ID: " + projectId);
+            throw new ResourceNotFoundException(NO_ANALYSIS_FOR_PROJECT + projectId);
         }
 
         return mapToAnalysisResponse(analysis);
@@ -261,17 +247,14 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         log.debug("Deleting analysis with ID: {}", id);
 
         if (!dependencyAnalysisRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Analysis not found with ID: " + id);
+            throw new ResourceNotFoundException(ANALYSIS_NOT_FOUND_WITH_ID + id);
         }
 
         dependencyAnalysisRepository.deleteById(id);
         log.info("Analysis deleted with ID: {}", id);
     }
 
-    /**
-     * Process a single dependency, check for updates and vulnerabilities
-     */
-    private Dependency processDependency(DependencyInfo dependencyInfo, DependencyAnalysis analysis, boolean checkVulnerabilities) {
+    private Dependency processDependency(DependencyInfo dependencyInfo, DependencyAnalysis analysis) {
         String groupId = dependencyInfo.getGroupId();
         String artifactId = dependencyInfo.getArtifactId();
         String currentVersion = prepareDependencyVersion(dependencyInfo);
@@ -279,13 +262,10 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
 
         log.debug("Processing dependency: {}:{} ({})", groupId, artifactId, currentVersion);
 
-        // Process license information
         String license = processLicenseInformation(dependencyInfo, groupId, artifactId, currentVersion);
 
-        // Process BOM managed dependencies
         DependencyVersionInfo versionInfo = processBomManagedDependency(dependencyInfo, currentVersion);
 
-        // Build the dependency entity and check for latest version
         Dependency dependency = buildDependencyAndCheckLatestVersion(
                 groupId, artifactId, currentVersion, scope, license,
                 analysis, versionInfo.bomManaged(), versionInfo.estimatedVersion());
@@ -293,33 +273,24 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         return dependencyRepository.save(dependency);
     }
 
-    /**
-     * Prepare the dependency version, using a placeholder if necessary
-     */
     private String prepareDependencyVersion(DependencyInfo dependencyInfo) {
         String version = dependencyInfo.getVersion();
         if (version == null) {
             log.debug("Version not specified for {}:{}, using placeholder version",
                     dependencyInfo.getGroupId(), dependencyInfo.getArtifactId());
-            return "MANAGED_BY_BOM";
+            return MANAGED_BY_BOM;
         }
         return version;
     }
 
-    /**
-     * Process license information from POM or Maven Central
-     */
     private String processLicenseInformation(DependencyInfo dependencyInfo, String groupId,
                                              String artifactId, String currentVersion) {
-        // Get license from the dependency info first (from POM)
-        String license = dependencyInfo.getLicense() != null ? dependencyInfo.getLicense() : "Unknown";
+        String license = dependencyInfo.getLicense() != null ? dependencyInfo.getLicense() : LICENSE_UNKNOWN;
 
-        // If license not available in POM or is unknown, fetch from Maven Central
-        if (license.isEmpty() || "Unknown".equalsIgnoreCase(license)) {
+        if (license.isEmpty() || LICENSE_UNKNOWN.equalsIgnoreCase(license)) {
             String cleanVersion = extractCleanVersion(currentVersion, dependencyInfo);
 
-            // Only try to fetch if we have a usable version
-            if (!cleanVersion.equals("MANAGED_BY_BOM")) {
+            if (!cleanVersion.equals(MANAGED_BY_BOM)) {
                 license = fetchLicenseFromMavenCentral(groupId, artifactId, cleanVersion, license);
             }
         }
@@ -327,35 +298,18 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         return license;
     }
 
-    /**
-     * Extract clean version from a version string with annotations
-     */
-    private String extractCleanVersion(String version, DependencyInfo dependencyInfo) {
-        String cleanVersion = version;
-
-        // For BOM-managed with estimation
-        if (version.contains("MANAGED_BY_BOM") && dependencyInfo.getEstimatedVersion() != null) {
-            cleanVersion = dependencyInfo.getEstimatedVersion();
-            log.debug("Using estimated version for license lookup: {}:{}:{}",
-                    dependencyInfo.getGroupId(), dependencyInfo.getArtifactId(), cleanVersion);
-        }
-        // For resolved BOM versions  
-        else if (version.contains("resolved from BOM")) {
-            cleanVersion = version.replace(" (resolved from BOM)", "");
-            log.debug("Using resolved BOM version for license lookup: {}:{}:{}",
-                    dependencyInfo.getGroupId(), dependencyInfo.getArtifactId(), cleanVersion);
-        }
-        // For other versions with annotations
-        else {
-            cleanVersion = version.replaceAll("\\s+\\(.*\\)$", "");
+    private String extractCleanVersion(String currentVersion, DependencyInfo dependencyInfo) {
+        if (currentVersion.contains(MANAGED_BY_BOM) && dependencyInfo.getEstimatedVersion() != null) {
+            return dependencyInfo.getEstimatedVersion();
         }
 
-        return cleanVersion;
+        if (currentVersion.contains(MANAGED_BY_BOM)) {
+            return MANAGED_BY_BOM;
+        }
+
+        return currentVersion;
     }
 
-    /**
-     * Fetch license information from Maven Central
-     */
     private String fetchLicenseFromMavenCentral(String groupId, String artifactId, String version, String defaultLicense) {
         try {
             Optional<String> fetchedLicense = mavenMetadataService.fetchLicenseInfo(groupId, artifactId, version);
@@ -374,25 +328,19 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         return defaultLicense;
     }
 
-    /**
-     * Process BOM managed dependency information
-     */
     private DependencyVersionInfo processBomManagedDependency(DependencyInfo dependencyInfo, String currentVersion) {
         boolean isBomManaged = false;
         String estimatedVersion = null;
 
-        if (currentVersion.contains("MANAGED_BY_BOM")) {
+        if (currentVersion.contains(MANAGED_BY_BOM)) {
             isBomManaged = true;
 
-            // No longer trying to extract estimated versions from the version string
-            // since we're not putting specific version estimates in there anymore
             if (dependencyInfo.getEstimatedVersion() != null) {
                 estimatedVersion = dependencyInfo.getEstimatedVersion();
                 log.debug("Using provided estimated version for {}:{}: {}",
                         dependencyInfo.getGroupId(), dependencyInfo.getArtifactId(), estimatedVersion);
             }
         } else if (currentVersion.contains("resolved from BOM")) {
-            // For resolved BOM versions, extract the actual version
             isBomManaged = true;
             estimatedVersion = currentVersion.replace(" (resolved from BOM)", "");
             log.debug("Using resolved BOM version for {}:{}: {}",
@@ -402,14 +350,10 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         return new DependencyVersionInfo(isBomManaged, estimatedVersion);
     }
 
-    /**
-     * Build the dependency entity and check for the latest version
-     */
     private Dependency buildDependencyAndCheckLatestVersion(String groupId, String artifactId,
                                                             String currentVersion, String scope,
                                                             String license, DependencyAnalysis analysis,
                                                             boolean isBomManaged, String estimatedVersion) {
-        // Build the dependency entity
         Dependency.DependencyBuilder builder = Dependency.builder()
                 .analysis(analysis)
                 .groupId(groupId)
@@ -420,13 +364,12 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 .versionsBehind(0)
                 .vulnerableCount(0)
                 .scope(scope)
-                .license(license == null || "null".equals(license) ? "Unknown" : license);
+                .license(license == null || "null".equals(license) ? LICENSE_UNKNOWN : license);
 
-        // Try additional license lookup for BOM-managed dependencies with estimated version
-        if (isBomManaged && estimatedVersion != null && (license == null || "Unknown".equalsIgnoreCase(license) || "null".equals(license))) {
+        if (isBomManaged && estimatedVersion != null && (license == null || LICENSE_UNKNOWN.equalsIgnoreCase(license) || "null".equals(license))) {
             String updatedLicense = tryLicenseLookupWithEstimatedVersion(groupId, artifactId, estimatedVersion, license);
             if (updatedLicense == null || "null".equals(updatedLicense)) {
-                updatedLicense = "Unknown";
+                updatedLicense = LICENSE_UNKNOWN;
             }
             if (!updatedLicense.equals(license)) {
                 builder.license(updatedLicense);
@@ -434,11 +377,9 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         }
 
         try {
-            // Update with latest version information
             checkAndUpdateLatestVersion(builder, groupId, artifactId, currentVersion);
 
-            // Determine the status (without considering vulnerabilities)
-            setDependencyStatus(builder);
+            setDependencyStatus(builder, builder.build());
 
             if (isBomManaged) {
                 builder.isBomManaged(true);
@@ -455,9 +396,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         return builder.build();
     }
 
-    /**
-     * Try to lookup license information using estimated version
-     */
     private String tryLicenseLookupWithEstimatedVersion(String groupId, String artifactId,
                                                         String estimatedVersion, String defaultLicense) {
         try {
@@ -473,16 +411,12 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                     groupId, artifactId, estimatedVersion, e.getMessage());
         }
 
-        // Ensure we don't return "null" as a string
         if (defaultLicense == null || "null".equals(defaultLicense)) {
-            return "Unknown";
+            return LICENSE_UNKNOWN;
         }
         return defaultLicense;
     }
 
-    /**
-     * Check for the latest version and update dependency information accordingly
-     */
     private void checkAndUpdateLatestVersion(Dependency.DependencyBuilder builder,
                                              String groupId, String artifactId, String currentVersion) {
         Optional<MavenArtifactInfo> latestVersionInfo = mavenClientService.getLatestArtifactVersion(groupId, artifactId);
@@ -491,8 +425,7 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
             String latestVersion = latestVersionInfo.get().getLatestVersion();
             builder.latestVersion(latestVersion);
 
-            // Skip version comparison for unresolved BOM dependencies
-            if (currentVersion.equals("MANAGED_BY_BOM") || currentVersion.contains("MANAGED_BY_BOM")) {
+            if (currentVersion.contains(MANAGED_BY_BOM)) {
                 builder.isOutdated(false);
                 builder.versionsBehind(0);
             } else {
@@ -503,13 +436,9 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         }
     }
 
-    /**
-     * Update version comparison information (outdated status, versions behind)
-     */
     private void updateVersionComparisonInformation(Dependency.DependencyBuilder builder,
                                                     String groupId, String artifactId,
                                                     String currentVersion, String latestVersion) {
-        // Clean the current version string to remove annotations like "(from parent)" or "(resolved from BOM)"
         String cleanedCurrentVersion = currentVersion.replaceAll("\\s+\\(.*\\)$", "");
 
         boolean isOutdated = !cleanedCurrentVersion.equals(latestVersion);
@@ -523,40 +452,30 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         }
     }
 
-    /**
-     * Set the dependency status based on its attributes
-     */
-    private void setDependencyStatus(Dependency.DependencyBuilder builder) {
+    private void setDependencyStatus(Dependency.DependencyBuilder builder, Dependency dependency) {
         String status;
-        Dependency dependency = builder.build();
 
-        // Check if it's a BOM-managed dependency first
-        if (dependency.getCurrentVersion().contains("MANAGED_BY_BOM")) {
-            status = "BOM Managed";
+        if (dependency.getCurrentVersion().contains(MANAGED_BY_BOM)) {
+            status = STATUS_BOM_MANAGED;
         } else if (Boolean.TRUE.equals(dependency.getIsOutdated())) {
-            status = "Outdated";
+            status = STATUS_OUTDATED;
         } else if (dependency.getLatestVersion() != null) {
-            status = "Up-to-date";
+            status = STATUS_UP_TO_DATE;
         } else {
-            status = "Unknown";
+            status = STATUS_UNKNOWN;
         }
         builder.status(status);
     }
 
-    /**
-     * Map DependencyAnalysis entity to AnalysisResponse DTO
-     */
     private AnalysisResponse mapToAnalysisResponse(DependencyAnalysis analysis) {
         List<DependencyResponse> dependencyResponses = analysis.getDependencies().stream()
                 .map(this::mapToDependencyResponse)
-                .collect(Collectors.toList());
+                .toList();
 
-        // Count vulnerable dependencies
         int vulnerableCount = (int) analysis.getDependencies().stream()
                 .filter(d -> d.getVulnerabilities() != null && !d.getVulnerabilities().isEmpty())
                 .count();
 
-        // Count license issues
         int licenseIssues = calculateLicenseIssues(analysis);
 
         Project project = analysis.getProject();
@@ -587,31 +506,24 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
      * @return The count of dependencies with license issues
      */
     private int calculateLicenseIssues(DependencyAnalysis analysis) {
-        // If license checking is not enabled, return 0
         if (!appSettingsService.isLicenseCheckingEnabled()) {
             return 0;
         }
 
-        // Get the list of restricted licenses from app settings
         List<String> restrictedLicenses = appSettingsService.getRestrictedLicenses();
         if (restrictedLicenses.isEmpty()) {
             return 0;
         }
 
-        // Count dependencies with restricted licenses
         return (int) analysis.getDependencies().stream()
                 .filter(dependency -> {
                     String license = dependency.getLicense();
-                    // Check if license is in the restricted list (case-insensitive)
                     return license != null && restrictedLicenses.stream()
                             .anyMatch(restricted -> license.toLowerCase().contains(restricted.toLowerCase()));
                 })
                 .count();
     }
 
-    /**
-     * Map Dependency entity to DependencyResponse DTO
-     */
     private DependencyResponse mapToDependencyResponse(Dependency dependency) {
         List<VulnerabilityResponse> vulnerabilityResponses = dependency.getVulnerabilities().stream()
                 .map(this::mapToVulnerabilityResponse)
@@ -636,9 +548,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 .build();
     }
 
-    /**
-     * Map Vulnerability entity to VulnerabilityResponse DTO
-     */
     private VulnerabilityResponse mapToVulnerabilityResponse(Vulnerability vulnerability) {
         return VulnerabilityResponse.builder()
                 .id(vulnerability.getId())
@@ -650,19 +559,14 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 .build();
     }
 
-    /**
-     * Map DependencyAnalysis entity to HistoryResponse DTO
-     */
     private HistoryResponse mapToHistoryResponse(DependencyAnalysis analysis) {
         Project project = analysis.getProject();
         String projectName = project != null ? project.getName() : "Standalone Analysis";
 
-        // Count vulnerable dependencies
         int vulnerableCount = (int) analysis.getDependencies().stream()
                 .filter(d -> d.getVulnerabilities() != null && !d.getVulnerabilities().isEmpty())
                 .count();
 
-        // Count license issues
         int licenseIssues = calculateLicenseIssues(analysis);
 
         return HistoryResponse.builder()
@@ -697,18 +601,15 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         log.info("Updating dependency {} to version {}", dependencyId, newVersion);
 
         Dependency dependency = dependencyRepository.findById(dependencyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dependency not found with ID: " + dependencyId));
+                .orElseThrow(() -> new ResourceNotFoundException(DEPENDENCY_NOT_FOUND_WITH_ID + dependencyId));
 
-        // Check if dependency is BOM managed
         if (dependency.getIsBomManaged() != null && dependency.getIsBomManaged()) {
             throw new IllegalStateException("Cannot update version of BOM managed dependency: " +
                     dependency.getGroupId() + ":" + dependency.getArtifactId());
         }
 
-        // Update the version
         dependency.setCurrentVersion(newVersion);
 
-        // Re-check latest version information
         try {
             checkAndUpdateLatestVersion(Dependency.builder(), dependency.getGroupId(),
                     dependency.getArtifactId(), newVersion);
@@ -716,7 +617,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
             log.error("Error checking latest version for updated dependency", e);
         }
 
-        // Save the updated dependency
         dependency = dependencyRepository.save(dependency);
 
         return mapToDependencyResponse(dependency);
@@ -727,23 +627,19 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         log.info("Generating updated POM file for analysis ID: {}", analysisId);
 
         DependencyAnalysis analysis = dependencyAnalysisRepository.findById(analysisId)
-                .orElseThrow(() -> new ResourceNotFoundException("Analysis not found with ID: " + analysisId));
+                .orElseThrow(() -> new ResourceNotFoundException(ANALYSIS_NOT_FOUND_WITH_ID + analysisId));
 
         try {
-            // Parse the original POM content
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(new StringReader(analysis.getPomContent()));
 
-            // Map to track property updates
             Map<String, String> propertiesToUpdate = new HashMap<>();
 
-            // Check parent POM version
             if (model.getParent() != null) {
                 String parentGroupId = model.getParent().getGroupId();
                 String parentArtifactId = model.getParent().getArtifactId();
                 String currentParentVersion = model.getParent().getVersion();
 
-                // Try to get latest parent version from Maven Central
                 Optional<MavenArtifactInfo> latestVersionInfo = mavenClientService.getLatestArtifactVersion(
                         parentGroupId, parentArtifactId);
 
@@ -765,13 +661,11 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 }
             }
 
-            // First pass: identify properties that need updates and respect parent-managed dependencies
             model.getDependencies().forEach(dep -> {
                 String version = dep.getVersion();
                 String groupId = dep.getGroupId();
                 String artifactId = dep.getArtifactId();
 
-                // Skip dependencies that don't have version - they are managed by parent POM
                 if (version == null || version.isEmpty()) {
                     log.info("Skipping version-less dependency {}.{} - it's managed by parent POM",
                             groupId, artifactId);
@@ -785,7 +679,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                                 && d.getLatestVersion() != null)
                         .findFirst()
                         .ifPresent(d -> {
-                            // Check if version uses property reference ${property.name}
                             if (version.startsWith("${") && version.endsWith("}")) {
                                 String propertyName = version.substring(2, version.length() - 1);
                                 propertiesToUpdate.put(propertyName, d.getLatestVersion());
@@ -793,7 +686,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                         });
             });
 
-            // Update properties
             if (model.getProperties() != null && !propertiesToUpdate.isEmpty()) {
                 propertiesToUpdate.forEach((key, value) -> {
                     if (model.getProperties().containsKey(key)) {
@@ -804,13 +696,9 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                 });
             }
 
-            // Second pass: update direct versions for dependencies not using properties
-            // and not managed by parent
             model.getDependencies().forEach(dep -> {
                 String version = dep.getVersion();
 
-                // Skip dependencies without version (managed by parent)
-                // or with property references (handled above)
                 if (version == null || version.isEmpty() ||
                         (version.startsWith("${") && version.endsWith("}"))) {
                     return;
@@ -829,7 +717,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
                         });
             });
 
-            // Write the updated model to a byte array
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             MavenXpp3Writer writer = new MavenXpp3Writer();
             writer.write(outputStream, model);
@@ -841,9 +728,6 @@ public class DependencyAnalysisServiceImpl implements DependencyAnalysisService 
         }
     }
 
-    /**
-     * Simple class to hold version information for a dependency
-     */
     private record DependencyVersionInfo(boolean bomManaged, String estimatedVersion) {
 
     }

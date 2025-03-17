@@ -3,9 +3,6 @@ package com.muratcan.yeldan.mavenanalyzer.service;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Service for executing Maven commands and parsing the output
- */
 public interface MavenCommandExecutorService {
 
     /**

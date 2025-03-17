@@ -1,7 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.controller;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AppSettingsRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.AppSettingsResponse;
 import com.muratcan.yeldan.mavenanalyzer.service.AppSettingsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,141 +1,97 @@
 package com.muratcan.yeldan.mavenanalyzer.controller;
 
-import com.muratcan.yeldan.mavenanalyzer.service.VulnerabilityService;
+import com.muratcan.yeldan.mavenanalyzer.config.DynamicCacheProperties;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ApiResponse;
+import com.muratcan.yeldan.mavenanalyzer.service.CacheManagementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
-/**
- * REST controller for managing application caches
- */
 @RestController
-@RequestMapping("/cache")
+@RequestMapping("/api/cache")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Cache Management", description = "API endpoints for managing application caches")
+@Tag(name = "Cache Management", description = "Endpoints for managing application caches")
 public class CacheController {
 
-    private static final String MESSAGE = "message";
-    private final VulnerabilityService vulnerabilityService;
-    private final CacheManager cacheManager;
+    private final CacheManagementService cacheManagementService;
+    private final DynamicCacheProperties cacheProperties;
 
-    /**
-     * Clear all caches in the application
-     *
-     * @return Response entity with success message
-     */
     @DeleteMapping
-    @Operation(
-            summary = "Clear all caches",
-            description = "Clear all application caches including vulnerability, license, chart, and version caches"
-    )
-    public ResponseEntity<Map<String, String>> clearAllCaches() {
-        log.info("Clearing all application caches");
-
-        // Clear vulnerability cache
-        vulnerabilityService.clearAllVulnerabilityCaches();
-
-        // Clear license cache
-        clearCache("licenseCache");
-
-        // Clear version estimate cache
-        clearCache("versionEstimateCache");
-
-        // Clear chart caches
-        clearCache("chartCache");
-        clearCache("chartDataCache");
-
-        return ResponseEntity.ok(Map.of(MESSAGE, "All application caches have been cleared"));
+    @Operation(summary = "Clear all caches", description = "Clears all application caches")
+    public ResponseEntity<ApiResponse> clearAllCaches() {
+        log.info("Request to clear all caches");
+        cacheManagementService.clearAllCaches();
+        return ResponseEntity.ok(new ApiResponse(true, "All caches cleared successfully"));
     }
 
-    /**
-     * Clear only vulnerability caches
-     *
-     * @return Response entity with success message
-     */
     @DeleteMapping("/vulnerability")
-    @Operation(
-            summary = "Clear vulnerability cache",
-            description = "Clear all cached vulnerability data"
-    )
-    public ResponseEntity<Map<String, String>> clearVulnerabilityCache() {
-        log.info("Clearing vulnerability cache");
-        vulnerabilityService.clearAllVulnerabilityCaches();
-        return ResponseEntity.ok(Map.of(MESSAGE, "Vulnerability cache has been cleared"));
+    @Operation(summary = "Clear vulnerability caches", description = "Clears vulnerability-related caches")
+    public ResponseEntity<ApiResponse> clearVulnerabilityCaches() {
+        log.info("Request to clear vulnerability caches");
+        cacheManagementService.clearVulnerabilityCaches();
+        return ResponseEntity.ok(new ApiResponse(true, "Vulnerability caches cleared successfully"));
     }
 
-    /**
-     * Clear only license caches
-     *
-     * @return Response entity with success message
-     */
     @DeleteMapping("/license")
-    @Operation(
-            summary = "Clear license cache",
-            description = "Clear all cached license data"
-    )
-    public ResponseEntity<Map<String, String>> clearLicenseCache() {
-        log.info("Clearing license cache");
-        clearCache("licenseCache");
-        return ResponseEntity.ok(Map.of(MESSAGE, "License cache has been cleared"));
+    @Operation(summary = "Clear license caches", description = "Clears license-related caches")
+    public ResponseEntity<ApiResponse> clearLicenseCaches() {
+        log.info("Request to clear license caches");
+        cacheManagementService.clearLicenseCaches();
+        return ResponseEntity.ok(new ApiResponse(true, "License caches cleared successfully"));
     }
 
-    /**
-     * Clear only chart caches
-     *
-     * @return Response entity with success message
-     */
     @DeleteMapping("/chart")
-    @Operation(
-            summary = "Clear chart cache",
-            description = "Clear all cached chart data"
-    )
-    public ResponseEntity<Map<String, String>> clearChartCache() {
-        log.info("Clearing chart cache");
-        clearCache("chartCache");
-        clearCache("chartDataCache");
-        return ResponseEntity.ok(Map.of(MESSAGE, "Chart cache has been cleared"));
+    @Operation(summary = "Clear chart caches", description = "Clears chart-related caches")
+    public ResponseEntity<ApiResponse> clearChartCaches() {
+        log.info("Request to clear chart caches");
+        cacheManagementService.clearChartCaches();
+        return ResponseEntity.ok(new ApiResponse(true, "Chart caches cleared successfully"));
     }
 
-    /**
-     * Clear only version estimate caches
-     *
-     * @return Response entity with success message
-     */
     @DeleteMapping("/version")
-    @Operation(
-            summary = "Clear version cache",
-            description = "Clear all cached version data"
-    )
-    public ResponseEntity<Map<String, String>> clearVersionCache() {
-        log.info("Clearing version cache");
-        clearCache("versionEstimateCache");
-        return ResponseEntity.ok(Map.of(MESSAGE, "Version cache has been cleared"));
+    @Operation(summary = "Clear version estimate caches", description = "Clears version estimate caches")
+    public ResponseEntity<ApiResponse> clearVersionEstimateCaches() {
+        log.info("Request to clear version estimate caches");
+        cacheManagementService.clearVersionEstimateCaches();
+        return ResponseEntity.ok(new ApiResponse(true, "Version estimate caches cleared successfully"));
     }
 
-    /**
-     * Helper method to clear a specific cache by name
-     *
-     * @param cacheName the name of the cache to clear
-     */
-    private void clearCache(String cacheName) {
-        try {
-            if (cacheManager.getCache(cacheName) != null) {
-                cacheManager.getCache(cacheName).clear();
-                log.debug("Cache '{}' cleared successfully", cacheName);
-            } else {
-                log.warn("Cache '{}' not found in cache manager", cacheName);
-            }
-        } catch (Exception e) {
-            log.error("Error clearing cache '{}': {}", cacheName, e.getMessage(), e);
+    @GetMapping("/status")
+    @Operation(summary = "Get cache status", description = "Returns the current status of caching")
+    public ResponseEntity<ApiResponse> getCacheStatus() {
+        boolean licenseCache = cacheProperties.isLicenseCacheEnabled();
+        boolean versionEstimateCache = cacheProperties.isVersionEstimateCacheEnabled();
+        boolean vulnerabilityCache = cacheProperties.isVulnerabilityCacheEnabled();
+
+        String status = String.format(
+                "Cache Status - License: %s, Version Estimate: %s, Vulnerability: %s",
+                licenseCache, versionEstimateCache, vulnerabilityCache);
+
+        log.info("Cache status: {}", status);
+        return ResponseEntity.ok(new ApiResponse(true, status));
+    }
+
+    @PutMapping("/toggle")
+    @Operation(summary = "Toggle caching", description = "Enable or disable all caching")
+    public ResponseEntity<ApiResponse> toggleCaching(@RequestParam boolean enabled) {
+        log.info("Request to {} caching", enabled ? "enable" : "disable");
+
+        cacheProperties.updateAllCacheProperties(enabled);
+
+        if (!enabled) {
+            cacheManagementService.clearAllCaches();
         }
+
+        return ResponseEntity.ok(new ApiResponse(true,
+                String.format("Caching %s successfully", enabled ? "enabled" : "disabled")));
     }
 } 

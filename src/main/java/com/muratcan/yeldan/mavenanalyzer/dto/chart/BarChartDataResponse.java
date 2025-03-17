@@ -8,9 +8,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
-/**
- * Response class for bar chart data
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
@@ -21,9 +18,6 @@ public class BarChartDataResponse extends ChartDataResponse {
     private List<BarChartEntry> data;
     private List<String> keys;
 
-    /**
-     * Entry for a bar chart
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

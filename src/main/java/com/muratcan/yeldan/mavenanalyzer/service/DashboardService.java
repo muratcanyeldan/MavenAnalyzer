@@ -1,10 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.service;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.DashboardStatsResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.DashboardStatsResponse;
 
-/**
- * Service for dashboard related functionality
- */
 public interface DashboardService {
 
     /**

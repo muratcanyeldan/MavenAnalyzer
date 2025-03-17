@@ -5,9 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-/**
- * Base response class for all chart data
- */
 @Data
 @SuperBuilder
 @NoArgsConstructor

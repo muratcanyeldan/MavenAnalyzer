@@ -1,7 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.DashboardStatsResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.HistoryResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.DashboardStatsResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.HistoryResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis;
 import com.muratcan.yeldan.mavenanalyzer.repository.DependencyAnalysisRepository;
 import com.muratcan.yeldan.mavenanalyzer.repository.DependencyRepository;
@@ -32,33 +32,26 @@ public class DashboardServiceImpl implements DashboardService {
     public DashboardStatsResponse getDashboardStats() {
         log.info("Collecting dashboard statistics");
 
-        // Count projects
         long projectCount = projectRepository.count();
         log.debug("Total projects: {}", projectCount);
 
-        // Count all dependencies across all analyses
         long dependencyCount = dependencyRepository.count();
         log.debug("Total dependencies: {}", dependencyCount);
 
-        // Count outdated dependencies
         long outdatedCount = dependencyRepository.countByIsOutdated(true);
         log.debug("Outdated dependencies: {}", outdatedCount);
 
-        // Count vulnerabilities
         long vulnerabilityCount = vulnerabilityRepository.count();
         log.debug("Total vulnerabilities: {}", vulnerabilityCount);
 
-        // Get recent analyses (latest 3)
         List<DependencyAnalysis> recentAnalyses = dependencyAnalysisRepository.findAll(
                 PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "analysisDate"))
         ).getContent();
 
-        // Map to response objects
         List<HistoryResponse> recentAnalysesResponses = recentAnalyses.stream()
                 .map(this::mapToHistoryResponse)
                 .toList();
 
-        // Build and return the response
         return DashboardStatsResponse.builder()
                 .totalProjects((int) projectCount)
                 .totalDependencies((int) dependencyCount)
@@ -68,11 +61,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .build();
     }
 
-    /**
-     * Map DependencyAnalysis entity to HistoryResponse DTO
-     */
     private HistoryResponse mapToHistoryResponse(DependencyAnalysis analysis) {
-        // Count total vulnerabilities
         int vulnerableCount = analysis.getDependencies().stream()
                 .mapToInt(d -> d.getVulnerableCount() != null ? d.getVulnerableCount() : 0)
                 .sum();

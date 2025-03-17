@@ -1,9 +1,9 @@
 package com.muratcan.yeldan.mavenanalyzer.controller;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.AnalysisRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.AnalysisResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.DependencyResponse;
-import com.muratcan.yeldan.mavenanalyzer.dto.HistoryResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AnalysisRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.AnalysisResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.DependencyResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.HistoryResponse;
 import com.muratcan.yeldan.mavenanalyzer.exception.InactiveProjectException;
 import com.muratcan.yeldan.mavenanalyzer.service.DependencyAnalysisService;
 import com.muratcan.yeldan.mavenanalyzer.service.VulnerabilityService;
@@ -38,6 +38,8 @@ import java.util.Map;
 @Tag(name = "Dependency Analysis", description = "API endpoints for analyzing Maven dependencies and checking for security vulnerabilities")
 public class DependencyAnalysisController {
 
+    private static final String ERROR = "error";
+
     private final DependencyAnalysisService dependencyAnalysisService;
     private final VulnerabilityService vulnerabilityService;
 
@@ -46,7 +48,7 @@ public class DependencyAnalysisController {
         log.warn("Attempt to analyze inactive project: {}", e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
-                .body(Map.of("error", e.getMessage()));
+                .body(Map.of(ERROR, e.getMessage()));
     }
 
     @PostMapping
@@ -74,7 +76,6 @@ public class DependencyAnalysisController {
         log.info("Analyzing dependencies for project ID (from path): {}, vulnerability check enabled: {}",
                 projectId, request.isCheckVulnerabilities());
 
-        // Ensure the project ID in the request matches the one in the path
         request.setProjectId(projectId);
 
         AnalysisResponse response = dependencyAnalysisService.analyzeDependencies(request);

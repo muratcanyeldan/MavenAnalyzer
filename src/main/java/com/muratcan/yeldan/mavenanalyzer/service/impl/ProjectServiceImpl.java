@@ -1,7 +1,8 @@
 package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.ProjectRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.ProjectResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.ProjectRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ProjectResponse;
+import com.muratcan.yeldan.mavenanalyzer.entity.Dependency;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis;
 import com.muratcan.yeldan.mavenanalyzer.entity.Project;
 import com.muratcan.yeldan.mavenanalyzer.exception.ResourceNotFoundException;
@@ -21,7 +22,13 @@ import java.util.List;
 @Slf4j
 public class ProjectServiceImpl implements ProjectService {
 
+    private static final String PROJECT_NOT_FOUND_WITH_ID = "Project not found with ID: ";
+
     private final ProjectRepository projectRepository;
+
+    private static int getVulnerabilitiesCount(Dependency d) {
+        return d.getVulnerableCount() != null ? d.getVulnerableCount() : 0;
+    }
 
     @Override
     @Transactional
@@ -46,7 +53,7 @@ public class ProjectServiceImpl implements ProjectService {
         log.debug("Fetching project with ID: {}", id);
 
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + id));
 
         return mapToProjectResponse(project);
     }
@@ -80,7 +87,7 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("Updating project with ID: {}, new name: {}", id, projectRequest.getName());
 
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + id));
 
         project.setName(projectRequest.getName());
         project.setDescription(projectRequest.getDescription());
@@ -97,7 +104,7 @@ public class ProjectServiceImpl implements ProjectService {
         log.debug("Deleting project with ID: {}", id);
 
         if (!projectRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Project not found with ID: " + id);
+            throw new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + id);
         }
 
         projectRepository.deleteById(id);
@@ -110,7 +117,7 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("Toggling status for project with ID: {}", id);
 
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(PROJECT_NOT_FOUND_WITH_ID + id));
 
         // Toggle the status
         project.setStatus(project.getStatus() == Project.ProjectStatus.ACTIVE ?
@@ -123,7 +130,6 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     private ProjectResponse mapToProjectResponse(Project project) {
-        // Get the latest analysis for the project
         DependencyAnalysis latestAnalysis = project.getAnalyses().stream()
                 .max(Comparator.comparing(DependencyAnalysis::getAnalysisDate))
                 .orElse(null);
@@ -144,7 +150,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .vulnerableCount(latestAnalysis != null ?
                         latestAnalysis.getDependencies().stream()
                                 .filter(d -> Boolean.TRUE.equals(d.getIsVulnerable()))
-                                .mapToInt(d -> d.getVulnerableCount() != null ? d.getVulnerableCount() : 0)
+                                .mapToInt(ProjectServiceImpl::getVulnerabilitiesCount)
                                 .sum() : null)
                 .build();
     }

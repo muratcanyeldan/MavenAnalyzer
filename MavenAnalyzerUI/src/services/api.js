@@ -207,11 +207,13 @@ const api = {
   
   // Cache management endpoints
   cache: {
-    clearAll: () => apiClient.delete('/cache'),
-    clearVulnerabilities: () => apiClient.delete('/cache/vulnerability'),
-    clearLicenses: () => apiClient.delete('/cache/license'),
-    clearCharts: () => apiClient.delete('/cache/chart'),
-    clearVersions: () => apiClient.delete('/cache/version')
+    clearAll: () => apiClient.delete('/api/cache'),
+    clearVulnerabilities: () => apiClient.delete('/api/cache/vulnerability'),
+    clearLicenses: () => apiClient.delete('/api/cache/license'),
+    clearCharts: () => apiClient.delete('/api/cache/chart'),
+    clearVersions: () => apiClient.delete('/api/cache/version'),
+    getStatus: () => apiClient.get('/api/cache/status'),
+    toggleCaching: (enabled) => apiClient.put(`/api/cache/toggle?enabled=${enabled}`)
   },
 };
 

@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/**
- * Request DTO for the OSS Index API to check for vulnerabilities
- */
 @Data
 @Builder
 @NoArgsConstructor

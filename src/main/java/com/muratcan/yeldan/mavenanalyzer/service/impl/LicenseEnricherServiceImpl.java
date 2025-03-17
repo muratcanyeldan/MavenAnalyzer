@@ -18,51 +18,37 @@ import java.util.Optional;
 @Slf4j
 public class LicenseEnricherServiceImpl implements LicenseEnricherService {
 
+    private static final String LICENSE_UNKNOWN = "unknown";
+    private static final String MANAGED_BY_BOM = "MANAGED_BY_BOM";
     private final MavenMetadataService mavenMetadataService;
 
     @Override
     public DependencyInfo enrichWithLicenseInfo(DependencyInfo dependencyInfo) {
-        // Only enrich if license is missing or unknown
         if (dependencyInfo.getLicense() == null ||
                 dependencyInfo.getLicense().isEmpty() ||
-                "unknown".equalsIgnoreCase(dependencyInfo.getLicense()) ||
+                LICENSE_UNKNOWN.equalsIgnoreCase(dependencyInfo.getLicense()) ||
                 "null".equalsIgnoreCase(dependencyInfo.getLicense())) {
 
-            // Get the artifacts coordinates
             String groupId = dependencyInfo.getGroupId();
             String artifactId = dependencyInfo.getArtifactId();
             String version = dependencyInfo.getVersion();
+            String cleanVersion = version;
 
-            // Only try to fetch if we have a version
-            if (version != null && !version.isEmpty()) {
-                String cleanVersion = version;
-                String licenseSource = "regular version";
-
-                // For BOM-managed with estimation
-                if (version.contains("MANAGED_BY_BOM") && dependencyInfo.getEstimatedVersion() != null) {
-                    cleanVersion = dependencyInfo.getEstimatedVersion();
-                    licenseSource = "estimated version";
-                }
-                // For resolved BOM versions
-                else if (version.contains("resolved from BOM")) {
-                    cleanVersion = version.replace(" (resolved from BOM)", "");
-                    licenseSource = "resolved BOM version";
-                }
-                // For versions with other annotations (e.g., "(managed)" or "(from parent)")
-                else {
-                    cleanVersion = version.replaceAll("\\s+\\(.*\\)$", "");
-                }
-
-                // Skip license lookup for bare "MANAGED_BY_BOM" with no estimated version
-                if (cleanVersion.equals("MANAGED_BY_BOM")) {
-                    log.debug("Skipping license lookup for {}:{} - no usable version available", groupId, artifactId);
-                    return dependencyInfo;
-                }
-
-                log.debug("Using {} for license lookup: {}:{}:{}", licenseSource, groupId, artifactId, cleanVersion);
-                String license = findLicenseInfo(groupId, artifactId, cleanVersion);
-                dependencyInfo.setLicense(license);
+            if (version.contains(MANAGED_BY_BOM) && dependencyInfo.getEstimatedVersion() != null) {
+                cleanVersion = dependencyInfo.getEstimatedVersion();
+                log.debug("Using estimated version for license lookup: {}:{}:{}",
+                        groupId, artifactId, cleanVersion);
+            } else if (cleanVersion.equals(MANAGED_BY_BOM)) {
+                return dependencyInfo;
+            } else if (version.contains("resolved from BOM")) {
+                cleanVersion = version.replace(" (resolved from BOM)", "");
+            } else {
+                cleanVersion = version.replaceAll("\\s+\\(.*\\)$", "");
             }
+
+            log.debug("Using {} for license lookup: {}:{}:{}", "regular version", groupId, artifactId, cleanVersion);
+            String license = findLicenseInfo(groupId, artifactId, cleanVersion);
+            dependencyInfo.setLicense(license);
         }
 
         return dependencyInfo;
@@ -70,17 +56,16 @@ public class LicenseEnricherServiceImpl implements LicenseEnricherService {
 
     @Override
     public String findLicenseInfo(String groupId, String artifactId, String version) {
-        // Validate parameters
         if (groupId == null || artifactId == null || version == null) {
             log.warn("Null parameters for license lookup: groupId={}, artifactId={}, version={}",
                     groupId, artifactId, version);
-            return "unknown";
+            return LICENSE_UNKNOWN;
         }
 
-        if (groupId.isEmpty() || artifactId.isEmpty() || version.isEmpty() || version.equals("MANAGED_BY_BOM")) {
+        if (groupId.isEmpty() || artifactId.isEmpty() || version.isEmpty() || version.equals(MANAGED_BY_BOM)) {
             log.warn("Empty or invalid parameters for license lookup: {}:{}:{}",
                     groupId, artifactId, version);
-            return "unknown";
+            return LICENSE_UNKNOWN;
         }
 
         try {
@@ -94,14 +79,14 @@ public class LicenseEnricherServiceImpl implements LicenseEnricherService {
                 return license;
             } else {
                 log.debug("No license found for {}:{}:{} in Maven Central", groupId, artifactId, version);
-                return "unknown";
+                return LICENSE_UNKNOWN;
             }
         } catch (Exception e) {
             log.warn("Error fetching license for {}:{}:{}: {}", groupId, artifactId, version, e.getMessage());
             if (log.isDebugEnabled()) {
                 log.debug("License lookup exception details:", e);
             }
-            return "unknown";
+            return LICENSE_UNKNOWN;
         }
     }
 } 

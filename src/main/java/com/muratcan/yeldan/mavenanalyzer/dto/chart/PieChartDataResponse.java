@@ -8,9 +8,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
-/**
- * Response class for pie chart data
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
@@ -20,9 +17,6 @@ public class PieChartDataResponse extends ChartDataResponse {
 
     private List<PieChartEntry> data;
 
-    /**
-     * Entry for a pie chart segment
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

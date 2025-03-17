@@ -1,6 +1,6 @@
 package com.muratcan.yeldan.mavenanalyzer.controller;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.ReportResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ReportResponse;
 import com.muratcan.yeldan.mavenanalyzer.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

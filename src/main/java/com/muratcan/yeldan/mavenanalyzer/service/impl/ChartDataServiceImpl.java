@@ -15,22 +15,63 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Implementation of ChartDataService for client-side rendering
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ChartDataServiceImpl implements ChartDataService {
 
+    // Constants for severity levels
+    private static final String SEVERITY_CRITICAL = "Critical";
+    private static final String SEVERITY_HIGH = "High";
+    private static final String SEVERITY_MEDIUM = "Medium";
+    private static final String SEVERITY_LOW = "Low";
+    private static final String SEVERITY_UNKNOWN = "Unknown";
+    private static final String SEVERITY_NONE = "None";
+
+    // Constants for severity text in summaries
+    private static final String TEXT_CRITICAL = "critical";
+    private static final String TEXT_HIGH = "high";
+    private static final String TEXT_MEDIUM = "medium";
+    private static final String TEXT_LOW = "low";
+    private static final String TEXT_UNKNOWN = "unknown";
+
+    // Constants for license information
+    private static final String LICENSE_UNKNOWN = "Unknown";
+
+    // Constants for colors
+    private static final String COLOR_CRITICAL = "#d32f2f"; // dark red
+    private static final String COLOR_HIGH = "#f44336"; // red
+    private static final String COLOR_MEDIUM = "#ff9800"; // orange
+    private static final String COLOR_LOW = "#ffeb3b"; // yellow
+    private static final String COLOR_UNKNOWN = "#9e9e9e"; // gray
+    private static final String COLOR_NO_VULNERABILITIES = "#4caf50"; // green
+
+    // Constants for summary messages
+    private static final String NO_DEPENDENCIES_FOUND = "No dependencies found";
+    private static final String NO_VULNERABILITIES_FOUND = "No vulnerabilities found";
+    private static final String FOUND_PREFIX = "Found ";
+    private static final String NO_VULNERABILITIES_PLACEHOLDER = "No Vulnerabilities";
+
+    private static String getSummary(long vulnerableDependencies, long safeDependencies) {
+        String summary;
+        if (vulnerableDependencies == 0 && safeDependencies == 0) {
+            summary = NO_DEPENDENCIES_FOUND;
+        } else if (vulnerableDependencies == 0) {
+            summary = "All " + safeDependencies + " dependencies are safe";
+        } else if (safeDependencies == 0) {
+            summary = "All " + vulnerableDependencies + " dependencies have vulnerabilities";
+        } else {
+            summary = FOUND_PREFIX + vulnerableDependencies + " vulnerable dependencies out of " +
+                    (vulnerableDependencies + safeDependencies) + " total dependencies";
+        }
+        return summary;
+    }
+
     @Override
     public PieChartDataResponse generateDependencyStatusChartData(DependencyAnalysis analysis) {
         log.debug("Generating dependency status chart data for analysis ID: {}", analysis.getId());
 
-        // Create chart entries
         List<PieChartDataResponse.PieChartEntry> entries = createDependencyStatusEntries(analysis);
-
-        // Create a human-readable summary
         int total = analysis.getUpToDateDependencies() + analysis.getOutdatedDependencies() + analysis.getUnidentifiedDependencies();
         String summary = createDependencyStatusSummary(analysis, total);
 
@@ -43,31 +84,24 @@ public class ChartDataServiceImpl implements ChartDataService {
                 .build();
     }
 
-    /**
-     * Creates chart entries for dependency status distribution
-     */
     private List<PieChartDataResponse.PieChartEntry> createDependencyStatusEntries(DependencyAnalysis analysis) {
         List<PieChartDataResponse.PieChartEntry> entries = new ArrayList<>();
 
-        // Only add entries with non-zero values
         addEntryIfPositiveCount(entries,
                 "Up-to-date", "Up-to-date",
-                analysis.getUpToDateDependencies(), "#4caf50"); // green
+                analysis.getUpToDateDependencies(), COLOR_NO_VULNERABILITIES); // green
 
         addEntryIfPositiveCount(entries,
                 "Outdated", "Outdated",
-                analysis.getOutdatedDependencies(), "#ff9800"); // orange
+                analysis.getOutdatedDependencies(), COLOR_MEDIUM); // orange
 
         addEntryIfPositiveCount(entries,
-                "Unknown", "Unknown",
-                analysis.getUnidentifiedDependencies(), "#9e9e9e"); // grey
+                SEVERITY_UNKNOWN, SEVERITY_UNKNOWN,
+                analysis.getUnidentifiedDependencies(), COLOR_UNKNOWN); // grey
 
         return entries;
     }
 
-    /**
-     * Add a pie chart entry if the count is positive
-     */
     private void addEntryIfPositiveCount(List<PieChartDataResponse.PieChartEntry> entries,
                                          String id, String label,
                                          int count, String color) {
@@ -76,42 +110,32 @@ public class ChartDataServiceImpl implements ChartDataService {
         }
     }
 
-    /**
-     * Creates a human-readable summary of dependency status distribution
-     */
     private String createDependencyStatusSummary(DependencyAnalysis analysis, int total) {
         if (total == 0) {
-            return "No dependencies found";
+            return NO_DEPENDENCIES_FOUND;
         }
 
         List<String> parts = new ArrayList<>();
 
-        // Add parts for each dependency status
         addStatusPartIfPositive(parts, analysis.getUpToDateDependencies(), "up-to-date");
         addStatusPartIfPositive(parts, analysis.getOutdatedDependencies(), "outdated");
-        addStatusPartIfPositive(parts, analysis.getUnidentifiedDependencies(), "unknown");
+        addStatusPartIfPositive(parts, analysis.getUnidentifiedDependencies(), TEXT_UNKNOWN);
 
         return formatSummaryFromParts(parts, "dependencies");
     }
 
-    /**
-     * Add a status description part to the parts list if count is positive
-     */
     private void addStatusPartIfPositive(List<String> parts, int count, String description) {
         if (count > 0) {
             parts.add(count + " " + description);
         }
     }
 
-    /**
-     * Format a summary string from parts list
-     */
     private String formatSummaryFromParts(List<String> parts, String itemType) {
         if (parts.isEmpty()) {
             return "No " + itemType + " found";
         }
 
-        StringBuilder summary = new StringBuilder("Found ");
+        StringBuilder summary = new StringBuilder(FOUND_PREFIX);
 
         for (int i = 0; i < parts.size(); i++) {
             if (i > 0) {
@@ -132,7 +156,6 @@ public class ChartDataServiceImpl implements ChartDataService {
     public PieChartDataResponse generateVulnerabilityStatusChartData(DependencyAnalysis analysis) {
         log.debug("Generating vulnerability status chart data for analysis ID: {}", analysis.getId());
 
-        // Count vulnerabilities
         long vulnerableDependencies = analysis.getDependencies().stream()
                 .filter(d -> Boolean.TRUE.equals(d.getIsVulnerable()))
                 .count();
@@ -146,7 +169,7 @@ public class ChartDataServiceImpl implements ChartDataService {
                     "Vulnerable",
                     "Vulnerable",
                     vulnerableDependencies,
-                    "#f44336" // red
+                    COLOR_HIGH
             ));
         }
 
@@ -155,22 +178,11 @@ public class ChartDataServiceImpl implements ChartDataService {
                     "Safe",
                     "Safe",
                     safeDependencies,
-                    "#4caf50" // green
+                    COLOR_NO_VULNERABILITIES
             ));
         }
 
-        // Create a human-readable summary
-        String summary;
-        if (vulnerableDependencies == 0 && safeDependencies == 0) {
-            summary = "No dependencies found";
-        } else if (vulnerableDependencies == 0) {
-            summary = "All " + safeDependencies + " dependencies are safe";
-        } else if (safeDependencies == 0) {
-            summary = "All " + vulnerableDependencies + " dependencies have vulnerabilities";
-        } else {
-            summary = "Found " + vulnerableDependencies + " vulnerable dependencies out of " +
-                    (vulnerableDependencies + safeDependencies) + " total dependencies";
-        }
+        String summary = getSummary(vulnerableDependencies, safeDependencies);
 
         return PieChartDataResponse.builder()
                 .chartType("pie")
@@ -185,41 +197,30 @@ public class ChartDataServiceImpl implements ChartDataService {
     public BarChartDataResponse generateVulnerabilitySeverityChartData(DependencyAnalysis analysis) {
         log.debug("Generating vulnerability severity chart data for analysis ID: {}", analysis.getId());
 
-        // Count vulnerabilities by severity
         Map<String, Integer> severityCounts = initializeSeverityCounts();
 
-        // Count the vulnerabilities for each severity level
         int totalVulnerabilities = countVulnerabilitiesBySeverity(analysis, severityCounts);
 
         log.info("Found a total of {} vulnerabilities for analysis ID: {}", totalVulnerabilities, analysis.getId());
 
-        // Create chart entries
         List<BarChartDataResponse.BarChartEntry> entries = createChartEntries(severityCounts);
 
-        // Create summary text
         String summary = createVulnerabilitySummary(severityCounts);
 
         return buildChartResponse(entries, summary);
     }
 
-    /**
-     * Initialize the severity count map with default values
-     */
     private Map<String, Integer> initializeSeverityCounts() {
         Map<String, Integer> severityCounts = new HashMap<>();
-        severityCounts.put("Critical", 0);
-        severityCounts.put("High", 0);
-        severityCounts.put("Medium", 0);
-        severityCounts.put("Low", 0);
-        severityCounts.put("Unknown", 0);
+        severityCounts.put(SEVERITY_CRITICAL, 0);
+        severityCounts.put(SEVERITY_HIGH, 0);
+        severityCounts.put(SEVERITY_MEDIUM, 0);
+        severityCounts.put(SEVERITY_LOW, 0);
+        severityCounts.put(SEVERITY_UNKNOWN, 0);
         return severityCounts;
     }
 
-    /**
-     * Count vulnerabilities by severity across all dependencies
-     */
     private int countVulnerabilitiesBySeverity(DependencyAnalysis analysis, Map<String, Integer> severityCounts) {
-        // Add debug logging to help diagnose issues
         log.debug("Starting vulnerability severity count for analysis ID: {} with {} dependencies",
                 analysis.getId(), analysis.getDependencies().size());
 
@@ -232,20 +233,14 @@ public class ChartDataServiceImpl implements ChartDataService {
         return totalVulnerabilities;
     }
 
-    /**
-     * Process vulnerabilities for a single dependency
-     */
     private int processVulnerabilitiesForDependency(Dependency dependency, Map<String, Integer> severityCounts) {
-        // Log dependency info for debugging
         log.debug("Processing dependency {}:{} (isVulnerable={})",
                 dependency.getGroupId(), dependency.getArtifactId(), dependency.getIsVulnerable());
 
-        // If the dependency is not marked as vulnerable, skip it
         if (!Boolean.TRUE.equals(dependency.getIsVulnerable())) {
             return 0;
         }
 
-        // Check if vulnerabilities collection is properly initialized
         if (dependency.getVulnerabilities() == null) {
             log.warn("Dependency {}:{} is marked as vulnerable but has null vulnerabilities collection",
                     dependency.getGroupId(), dependency.getArtifactId());
@@ -265,73 +260,56 @@ public class ChartDataServiceImpl implements ChartDataService {
         return count;
     }
 
-    /**
-     * Process a single vulnerability and update severity counts
-     */
     private void countVulnerabilityBySeverity(Vulnerability vulnerability, Map<String, Integer> severityCounts) {
-        // Normalize severity
         String severity = normalizeSeverity(vulnerability.getSeverity());
 
-        // Skip "None" severity
-        if (severity.equals("None")) {
+        if (severity.equals(SEVERITY_NONE)) {
             return;
         }
 
-        // Count the vulnerability
         severityCounts.put(severity, severityCounts.getOrDefault(severity, 0) + 1);
 
         log.debug("Counted vulnerability {} with severity {}", vulnerability.getName(), severity);
     }
 
-    /**
-     * Normalize severity to handle case differences and null values
-     */
     private String normalizeSeverity(String severity) {
-        if (severity == null || severity.isEmpty() || severity.equalsIgnoreCase("unknown")) {
-            return "Unknown";
-        } else if (severity.equalsIgnoreCase("critical")) {
-            return "Critical";
-        } else if (severity.equalsIgnoreCase("high")) {
-            return "High";
-        } else if (severity.equalsIgnoreCase("medium")) {
-            return "Medium";
-        } else if (severity.equalsIgnoreCase("low")) {
-            return "Low";
-        } else if (severity.equalsIgnoreCase("none")) {
-            return "None";
+        if (severity == null || severity.isEmpty() || severity.equalsIgnoreCase(SEVERITY_UNKNOWN)) {
+            return SEVERITY_UNKNOWN;
+        } else if (severity.equalsIgnoreCase(SEVERITY_CRITICAL)) {
+            return SEVERITY_CRITICAL;
+        } else if (severity.equalsIgnoreCase(SEVERITY_HIGH)) {
+            return SEVERITY_HIGH;
+        } else if (severity.equalsIgnoreCase(SEVERITY_MEDIUM)) {
+            return SEVERITY_MEDIUM;
+        } else if (severity.equalsIgnoreCase(SEVERITY_LOW)) {
+            return SEVERITY_LOW;
+        } else if (severity.equalsIgnoreCase(SEVERITY_NONE)) {
+            return SEVERITY_NONE;
         } else {
-            // Any unrecognized severity is treated as Unknown
-            return "Unknown";
+            return SEVERITY_UNKNOWN;
         }
     }
 
-    /**
-     * Create chart entries based on severity counts
-     */
     private List<BarChartDataResponse.BarChartEntry> createChartEntries(Map<String, Integer> severityCounts) {
         List<BarChartDataResponse.BarChartEntry> entries = new ArrayList<>();
 
-        addEntryIfPositiveCount(entries, "Critical", severityCounts.get("Critical"), "#d32f2f"); // dark red
-        addEntryIfPositiveCount(entries, "High", severityCounts.get("High"), "#f44336"); // red
-        addEntryIfPositiveCount(entries, "Medium", severityCounts.get("Medium"), "#ff9800"); // orange
-        addEntryIfPositiveCount(entries, "Low", severityCounts.get("Low"), "#ffeb3b"); // yellow
-        addEntryIfPositiveCount(entries, "Unknown", severityCounts.get("Unknown"), "#9e9e9e"); // gray
+        addEntryIfPositiveCount(entries, SEVERITY_CRITICAL, severityCounts.get(SEVERITY_CRITICAL), COLOR_CRITICAL);
+        addEntryIfPositiveCount(entries, SEVERITY_HIGH, severityCounts.get(SEVERITY_HIGH), COLOR_HIGH);
+        addEntryIfPositiveCount(entries, SEVERITY_MEDIUM, severityCounts.get(SEVERITY_MEDIUM), COLOR_MEDIUM);
+        addEntryIfPositiveCount(entries, SEVERITY_LOW, severityCounts.get(SEVERITY_LOW), COLOR_LOW);
+        addEntryIfPositiveCount(entries, SEVERITY_UNKNOWN, severityCounts.get(SEVERITY_UNKNOWN), COLOR_UNKNOWN);
 
-        // If no entries were added, add a placeholder entry for "No Vulnerabilities"
         if (entries.isEmpty()) {
             entries.add(new BarChartDataResponse.BarChartEntry(
-                    "No Vulnerabilities",
+                    NO_VULNERABILITIES_PLACEHOLDER,
                     0,
-                    "#4caf50" // green for no vulnerabilities
+                    COLOR_NO_VULNERABILITIES
             ));
         }
 
         return entries;
     }
 
-    /**
-     * Add a chart entry if the count is positive
-     */
     private void addEntryIfPositiveCount(List<BarChartDataResponse.BarChartEntry> entries,
                                          String label, int count, String color) {
         if (count > 0) {
@@ -339,9 +317,6 @@ public class ChartDataServiceImpl implements ChartDataService {
         }
     }
 
-    /**
-     * Build the final chart response
-     */
     private BarChartDataResponse buildChartResponse(List<BarChartDataResponse.BarChartEntry> entries, String summary) {
         return BarChartDataResponse.builder()
                 .chartType("bar")
@@ -353,75 +328,54 @@ public class ChartDataServiceImpl implements ChartDataService {
                 .build();
     }
 
-    /**
-     * Create a human-readable summary of vulnerability counts
-     */
     private String createVulnerabilitySummary(Map<String, Integer> severityCounts) {
-        int total = severityCounts.values().stream().mapToInt(Integer::intValue).sum();
-
-        if (total == 0) {
-            return "No vulnerabilities found";
-        }
-
-        StringBuilder summary = new StringBuilder("Found ");
-
         List<String> parts = new ArrayList<>();
-        if (severityCounts.get("Critical") > 0) {
-            parts.add(severityCounts.get("Critical") + " critical");
+
+        if (severityCounts.get(SEVERITY_CRITICAL) > 0) {
+            parts.add(severityCounts.get(SEVERITY_CRITICAL) + " " + TEXT_CRITICAL);
         }
-        if (severityCounts.get("High") > 0) {
-            parts.add(severityCounts.get("High") + " high");
+
+        if (severityCounts.get(SEVERITY_HIGH) > 0) {
+            parts.add(severityCounts.get(SEVERITY_HIGH) + " " + TEXT_HIGH);
         }
-        if (severityCounts.get("Medium") > 0) {
-            parts.add(severityCounts.get("Medium") + " medium");
+
+        if (severityCounts.get(SEVERITY_MEDIUM) > 0) {
+            parts.add(severityCounts.get(SEVERITY_MEDIUM) + " " + TEXT_MEDIUM);
         }
-        if (severityCounts.get("Low") > 0) {
-            parts.add(severityCounts.get("Low") + " low");
+
+        if (severityCounts.get(SEVERITY_LOW) > 0) {
+            parts.add(severityCounts.get(SEVERITY_LOW) + " " + TEXT_LOW);
         }
-        if (severityCounts.get("Unknown") > 0) {
-            parts.add(severityCounts.get("Unknown") + " unspecified severity level");
+
+        if (severityCounts.get(SEVERITY_UNKNOWN) > 0) {
+            parts.add(severityCounts.get(SEVERITY_UNKNOWN) + " " + TEXT_UNKNOWN);
         }
 
         if (parts.isEmpty()) {
-            return "No vulnerabilities found";
+            return NO_VULNERABILITIES_FOUND;
         }
 
-        for (int i = 0; i < parts.size(); i++) {
-            if (i > 0) {
-                if (i == parts.size() - 1) {
-                    summary.append(" and ");
-                } else {
-                    summary.append(", ");
-                }
-            }
-            summary.append(parts.get(i));
-        }
-
-        summary.append(" vulnerabilities");
-        return summary.toString();
+        return FOUND_PREFIX + String.join(", ", parts) + " severity vulnerabilities";
     }
 
     @Override
     public PieChartDataResponse generateLicenseDistributionChartData(DependencyAnalysis analysis) {
         log.debug("Generating license distribution chart data for analysis ID: {}", analysis.getId());
 
-        // Count dependencies by license
         Map<String, Integer> licenseCounts = new HashMap<>();
 
         for (Dependency dependency : analysis.getDependencies()) {
             String license = dependency.getLicense();
             if (license == null || license.trim().isEmpty()) {
-                license = "Unknown";
+                license = LICENSE_UNKNOWN;
             }
             licenseCounts.put(license, licenseCounts.getOrDefault(license, 0) + 1);
         }
 
-        // Create chart entries
         List<PieChartDataResponse.PieChartEntry> entries = licenseCounts.entrySet().stream()
-                .filter(entry -> entry.getValue() > 0) // Only include non-zero values
+                .filter(entry -> entry.getValue() > 0)
                 .map(entry -> {
                     String license = entry.getKey();
-                    // Generate a consistent color based on the license name (simple hash)
                     String color = String.format("#%06x", (0xCCCCCC + license.hashCode()) & 0xFFFFFF);
                     return new PieChartDataResponse.PieChartEntry(
                             license,
@@ -432,20 +386,18 @@ public class ChartDataServiceImpl implements ChartDataService {
                 })
                 .toList();
 
-        // Create a human-readable summary
         String summary;
         int totalLicenses = licenseCounts.size();
         int totalDependencies = analysis.getDependencies().size();
 
         if (totalDependencies == 0) {
-            summary = "No dependencies found";
+            summary = NO_DEPENDENCIES_FOUND;
         } else if (totalLicenses == 0) {
             summary = "No license information available for any dependencies";
         } else {
-            summary = "Found " + totalDependencies + " dependencies with " + totalLicenses + " different license types";
+            summary = FOUND_PREFIX + totalDependencies + " dependencies with " + totalLicenses + " different license types";
 
-            // Check for unknown licenses
-            Integer unknownCount = licenseCounts.get("Unknown");
+            Integer unknownCount = licenseCounts.get(LICENSE_UNKNOWN);
             if (unknownCount != null && unknownCount > 0) {
                 summary += " (" + unknownCount + " with unknown license)";
             }

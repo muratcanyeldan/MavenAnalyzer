@@ -86,7 +86,6 @@ public class MavenClientServiceImpl implements MavenClientService {
             log.debug("Checking if newer version is available for artifact: {}:{} (current: {})",
                     groupId, artifactId, currentVersion);
 
-            // Clean the current version string in case it has annotations like "(from parent)"
             String cleanedCurrentVersion = currentVersion.replaceAll("\\s+\\(.*\\)$", "");
 
             Optional<MavenArtifactInfo> latestVersionInfo = getLatestArtifactVersion(groupId, artifactId);
@@ -116,7 +115,6 @@ public class MavenClientServiceImpl implements MavenClientService {
             log.debug("Calculating versions behind for artifact: {}:{} (current: {})",
                     groupId, artifactId, currentVersion);
 
-            // Current version should already be cleaned by the caller, but clean again for safety
             String cleanedCurrentVersion = currentVersion.replaceAll("\\s+\\(.*\\)$", "");
 
             Optional<MavenArtifactInfo> latestVersionInfo = getLatestArtifactVersion(groupId, artifactId);

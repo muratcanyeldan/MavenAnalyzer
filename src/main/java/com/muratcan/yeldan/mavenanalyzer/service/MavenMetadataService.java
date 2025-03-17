@@ -2,9 +2,6 @@ package com.muratcan.yeldan.mavenanalyzer.service;
 
 import java.util.Optional;
 
-/**
- * Service to fetch Maven artifact metadata from Maven repositories
- */
 public interface MavenMetadataService {
 
     /**

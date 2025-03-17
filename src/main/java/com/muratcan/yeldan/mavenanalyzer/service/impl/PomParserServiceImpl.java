@@ -31,73 +31,41 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PomParserServiceImpl implements PomParserService {
 
+    private static final String MANAGED_BY_BOM = "MANAGED_BY_BOM";
+
     private final LicenseEnricherService licenseEnricherService;
     private final MavenMetadataService mavenMetadataService;
     private final MavenCommandExecutorService mavenCommandExecutorService;
 
-    @Override
-    public List<DependencyInfo> parsePomDependencies(String pomContent) {
-        return parsePomDependencies(pomContent, null);
-    }
-
-    @Override
-    public List<DependencyInfo> parsePomDependencies(String pomContent, String pomDirectory) {
-        return parsePomDependencies(pomContent, pomDirectory, true); // Default to including transitive dependencies
-    }
 
     @Override
     public List<DependencyInfo> parsePomDependencies(String pomContent, String pomDirectory, boolean includeTransitive) {
         List<DependencyInfo> dependencies = new ArrayList<>();
 
         try {
-            // Parse POM model
             Model model = parsePomModel(pomContent);
-
-            // Extract parent information
             ParentInfo parentInfo = extractParentInfo(model);
-
-            // Process properties
             Properties properties = processProperties(model, pomDirectory);
-
-            // Extract managed versions from dependencyManagement section
             Map<String, String> managedVersions = extractManagedVersions(model);
 
-            // Extract license from project if available
             String projectLicense = extractProjectLicense(model);
 
-            // Process each dependency
             for (Dependency dependency : model.getDependencies()) {
-                // Skip transitive dependencies if not requested
-                if (!includeTransitive && "true".equals(dependency.getOptional())) {
-                    log.debug("Skipping optional/transitive dependency: {}:{}:{}",
+                if (!includeTransitive && ("true".equals(dependency.getOptional()) || "provided".equals(dependency.getScope()) || "test".equals(dependency.getScope()))) {
+                    log.debug("Skipping dependency: {}:{}:{}",
                             dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion());
-                    continue;
+                } else {
+                    DependencyInfo dependencyInfo = processDependency(
+                            dependency,
+                            properties,
+                            parentInfo,
+                            managedVersions,
+                            projectLicense,
+                            pomDirectory
+                    );
+
+                    dependencies.add(licenseEnricherService.enrichWithLicenseInfo(dependencyInfo));
                 }
-
-                // Skip dependencies with "provided" scope when not including transitive deps
-                if (!includeTransitive && "provided".equals(dependency.getScope())) {
-                    log.debug("Skipping provided scope dependency: {}:{}:{}",
-                            dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion());
-                    continue;
-                }
-
-                // Skip test dependencies when not including transitive deps
-                if (!includeTransitive && "test".equals(dependency.getScope())) {
-                    log.debug("Skipping test scope dependency: {}:{}:{}",
-                            dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion());
-                    continue;
-                }
-
-                DependencyInfo dependencyInfo = processDependency(
-                        dependency,
-                        properties,
-                        parentInfo,
-                        managedVersions,
-                        projectLicense,
-                        pomDirectory
-                );
-
-                dependencies.add(licenseEnricherService.enrichWithLicenseInfo(dependencyInfo));
             }
 
             return dependencies;
@@ -107,17 +75,11 @@ public class PomParserServiceImpl implements PomParserService {
         }
     }
 
-    /**
-     * Parse the POM content into a Model object
-     */
     private Model parsePomModel(String pomContent) throws IOException, XmlPullParserException {
         MavenXpp3Reader reader = new MavenXpp3Reader();
         return reader.read(new StringReader(pomContent));
     }
 
-    /**
-     * Extract parent POM information
-     */
     private ParentInfo extractParentInfo(Model model) {
         if (model.getParent() != null) {
             String parentGroupId = model.getParent().getGroupId();
@@ -131,21 +93,16 @@ public class PomParserServiceImpl implements PomParserService {
         return new ParentInfo(null, null, null);
     }
 
-    /**
-     * Process model properties and Maven project properties
-     */
     private Properties processProperties(Model model, String pomDirectory) {
         Properties properties = model.getProperties();
         if (properties == null) {
             properties = new Properties();
         }
 
-        // If pomDirectory is provided, fetch project properties using Maven
         if (pomDirectory != null && !pomDirectory.trim().isEmpty()) {
             log.info("POM directory provided, fetching project properties using Maven");
             Map<String, String> mavenProperties = mavenCommandExecutorService.getProjectProperties(pomDirectory);
 
-            // Add Maven properties to the properties map for resolution
             for (Map.Entry<String, String> entry : mavenProperties.entrySet()) {
                 properties.setProperty(entry.getKey(), entry.getValue());
             }
@@ -156,9 +113,6 @@ public class PomParserServiceImpl implements PomParserService {
         return properties;
     }
 
-    /**
-     * Extract managed versions from dependencyManagement section
-     */
     private Map<String, String> extractManagedVersions(Model model) {
         Map<String, String> managedVersions = new HashMap<>();
 
@@ -174,9 +128,6 @@ public class PomParserServiceImpl implements PomParserService {
         return managedVersions;
     }
 
-    /**
-     * Extract license from project if available
-     */
     private String extractProjectLicense(Model model) {
         if (model.getLicenses() != null && !model.getLicenses().isEmpty()) {
             String projectLicense = model.getLicenses().stream()
@@ -190,9 +141,6 @@ public class PomParserServiceImpl implements PomParserService {
         return null;
     }
 
-    /**
-     * Process a single dependency
-     */
     private DependencyInfo processDependency(
             Dependency dependency,
             Properties properties,
@@ -205,7 +153,6 @@ public class PomParserServiceImpl implements PomParserService {
         boolean isBomManaged = version == null; // If version is null, it's managed by BOM
         Optional<String> estimatedVersion = Optional.empty();
 
-        // Handle BOM managed dependencies
         if (isBomManaged) {
             VersionResolutionResult result = resolveBomManagedVersion(
                     dependency, parentInfo, managedVersions, properties, pomDirectory);
@@ -215,7 +162,6 @@ public class PomParserServiceImpl implements PomParserService {
             isBomManaged = result.isBomManaged();
         }
 
-        // Create dependency info
         DependencyInfo dependencyInfo = DependencyInfo.builder()
                 .groupId(dependency.getGroupId())
                 .artifactId(dependency.getArtifactId())
@@ -227,15 +173,11 @@ public class PomParserServiceImpl implements PomParserService {
                 .originalDefinition(dependency.toString())
                 .build();
 
-        // If we have an estimated version, set it in the dependency info
         estimatedVersion.ifPresent(dependencyInfo::setEstimatedVersion);
 
         return dependencyInfo;
     }
 
-    /**
-     * Resolve version for BOM managed dependencies
-     */
     private VersionResolutionResult resolveBomManagedVersion(
             Dependency dependency,
             ParentInfo parentInfo,
@@ -243,17 +185,15 @@ public class PomParserServiceImpl implements PomParserService {
             Properties properties,
             String pomDirectory) {
 
-        String version = null;
+        String version;
         Optional<String> estimatedVersion = Optional.empty();
         boolean isBomManaged = true;
 
-        // For Spring Boot starters managed by parent, use parent version
         if (parentInfo.getParentVersion() != null &&
                 dependency.getGroupId().startsWith("org.springframework.boot")) {
 
             version = parentInfo.getParentVersion() + " (from parent)";
         } else {
-            // Try to find in dependency management
             String key = dependency.getGroupId() + ":" + dependency.getArtifactId();
             String managedVersion = managedVersions.get(key);
 
@@ -272,26 +212,21 @@ public class PomParserServiceImpl implements PomParserService {
         return new VersionResolutionResult(version, estimatedVersion, isBomManaged);
     }
 
-    /**
-     * Resolve version from Maven or estimate based on parent BOM
-     */
     private String resolveVersionFromExternalSources(
             String groupId,
             String artifactId,
             ParentInfo parentInfo,
             String pomDirectory) {
 
-        String version = "MANAGED_BY_BOM";
-        Optional<String> estimatedVersion = Optional.empty();
+        String version = MANAGED_BY_BOM;
+        Optional<String> estimatedVersion;
 
-        // If pomDirectory is provided, try to resolve the managed version using Maven
         if (pomDirectory != null && !pomDirectory.trim().isEmpty()) {
             Optional<String> resolvedVersion = mavenCommandExecutorService.resolveManagedDependencyVersion(
                     groupId, artifactId, pomDirectory);
 
             if (resolvedVersion.isPresent()) {
                 String resolvedVersionStr = resolvedVersion.get();
-                estimatedVersion = resolvedVersion;
                 version = resolvedVersionStr + " (resolved from BOM)";
                 log.info("Successfully resolved BOM-managed version for {}:{}: {}",
                         groupId, artifactId, resolvedVersionStr);
@@ -299,7 +234,6 @@ public class PomParserServiceImpl implements PomParserService {
             }
         }
 
-        // Try to estimate the version based on parent BOM
         estimatedVersion = mavenMetadataService.estimateBomManagedVersion(
                 groupId,
                 artifactId,
@@ -315,18 +249,6 @@ public class PomParserServiceImpl implements PomParserService {
         return version;
     }
 
-    @Override
-    public boolean isValidPom(String pomContent) {
-        try {
-            MavenXpp3Reader reader = new MavenXpp3Reader();
-            reader.read(new StringReader(pomContent));
-            return true;
-        } catch (IOException | XmlPullParserException e) {
-            log.error("Invalid POM content: {}", e.getMessage());
-            return false;
-        }
-    }
-
     /**
      * Resolve a version string that may contain property references
      *
@@ -339,7 +261,6 @@ public class PomParserServiceImpl implements PomParserService {
             return null;
         }
 
-        // Pattern to match ${property}
         Pattern pattern = Pattern.compile("\\$\\{([^}]+)\\}");
         Matcher matcher = pattern.matcher(version);
 
@@ -350,7 +271,6 @@ public class PomParserServiceImpl implements PomParserService {
             if (propertyValue != null) {
                 return version.replace("${" + propertyName + "}", propertyValue);
             } else {
-                // If the property value is not found, return the original version
                 log.debug("Could not resolve property in version: {}", version);
                 return version;
             }
@@ -359,9 +279,6 @@ public class PomParserServiceImpl implements PomParserService {
         return version;
     }
 
-    /**
-     * Simple value class to hold parent POM information
-     */
     private static class ParentInfo {
         private final String parentGroupId;
         private final String parentArtifactId;
@@ -386,9 +303,6 @@ public class PomParserServiceImpl implements PomParserService {
         }
     }
 
-    /**
-     * Simple value class to hold version resolution results
-     */
     private static class VersionResolutionResult {
         private final String version;
         private final Optional<String> estimatedVersion;

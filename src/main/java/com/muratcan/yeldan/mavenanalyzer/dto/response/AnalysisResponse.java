@@ -1,4 +1,4 @@
-package com.muratcan.yeldan.mavenanalyzer.dto;
+package com.muratcan.yeldan.mavenanalyzer.dto.response;
 
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis.VulnerabilityCheckStatus;
 import lombok.AllArgsConstructor;
@@ -26,13 +26,7 @@ public class AnalysisResponse {
     private String chartPath;
     private VulnerabilityCheckStatus vulnerabilityCheckStatus;
     private List<DependencyResponse> dependencies;
-
-    // Add vulnerable count
     private Integer vulnerableCount;
-
-    // Add license issues count
     private Integer licenseIssues;
-
-    // Add notifyOnCompletion field
     private boolean notifyOnCompletion;
 } 

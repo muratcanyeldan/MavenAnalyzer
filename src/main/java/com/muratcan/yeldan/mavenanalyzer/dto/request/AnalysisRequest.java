@@ -1,4 +1,4 @@
-package com.muratcan.yeldan.mavenanalyzer.dto;
+package com.muratcan.yeldan.mavenanalyzer.dto.request;
 
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AnalysisRequest {
 
-    // Project ID is optional to support analyses without a project
     private Long projectId;
 
     @NotEmpty(message = "POM content is required")
@@ -24,7 +23,6 @@ public class AnalysisRequest {
 
     private String pomDirectoryPath;
 
-    // Whether to include transitive dependencies in the analysis
     private boolean includeTransitive = true;
 
     private boolean notifyOnCompletion;

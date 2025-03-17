@@ -1,7 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.service;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.ProjectRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.ProjectResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.ProjectRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ProjectResponse;
 
 import java.util.List;
 

@@ -1,15 +1,12 @@
 package com.muratcan.yeldan.mavenanalyzer.controller;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.ChartResponse;
 import com.muratcan.yeldan.mavenanalyzer.dto.chart.BarChartDataResponse;
 import com.muratcan.yeldan.mavenanalyzer.dto.chart.PieChartDataResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.ChartResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis;
 import com.muratcan.yeldan.mavenanalyzer.exception.ResourceNotFoundException;
 import com.muratcan.yeldan.mavenanalyzer.repository.DependencyAnalysisRepository;
 import com.muratcan.yeldan.mavenanalyzer.service.ChartCacheService;
-import com.muratcan.yeldan.mavenanalyzer.service.ChartDataService;
-import com.muratcan.yeldan.mavenanalyzer.service.ChartGeneratorService;
-import com.muratcan.yeldan.mavenanalyzer.service.DependencyAnalysisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -35,28 +32,19 @@ import java.nio.file.Paths;
 @Tag(name = "Charts", description = "API endpoints for generating and retrieving dependency analysis charts")
 public class ChartController {
 
-    private final ChartGeneratorService chartGeneratorService;
-    private final ChartDataService chartDataService;
-    private final DependencyAnalysisService dependencyAnalysisService;
+    private static final String ANALYSIS_NOT_FOUND_WITH_ID = "Analysis not found with ID: ";
+
     private final DependencyAnalysisRepository dependencyAnalysisRepository;
     private final ChartCacheService chartCacheService;
 
-    //
-    // Server-side rendered chart endpoints (original implementation)
-    //
 
     @GetMapping("/dependency-updates/{analysisId}")
     @Operation(summary = "Get dependency updates chart", description = "Generate and retrieve a chart showing dependency update status")
     public ResponseEntity<ChartResponse> getDependencyUpdatesChart(@PathVariable Long analysisId) {
         log.info("Generating dependency updates chart for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart
         ChartResponse chartResponse = chartCacheService.getCachedDependencyUpdateChart(analysisId, analysis);
-
-        // Extract just the filename from the path
         String fullPath = chartResponse.getChartPath();
         String fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1);
         chartResponse.setChartPath(fileName);
@@ -69,13 +57,8 @@ public class ChartController {
     public ResponseEntity<ChartResponse> getVulnerabilitiesChart(@PathVariable Long analysisId) {
         log.info("Generating vulnerabilities chart for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart
         ChartResponse chartResponse = chartCacheService.getCachedVulnerabilityChart(analysisId, analysis);
-
-        // Extract just the filename from the path
         String fullPath = chartResponse.getChartPath();
         String fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1);
         chartResponse.setChartPath(fileName);
@@ -88,15 +71,10 @@ public class ChartController {
     public ResponseEntity<ChartResponse> getLicenseDistributionChart(@PathVariable Long analysisId) {
         log.info("Generating license distribution chart for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart
         ChartResponse chartResponse = chartCacheService.getCachedLicenseDistributionChart(analysisId, analysis);
         chartResponse.setTitle("License Distribution");
         chartResponse.setDescription("Distribution of licenses used by dependencies in the project");
-
-        // Extract just the filename from the path
         String fullPath = chartResponse.getChartPath();
         String fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1);
         chartResponse.setChartPath(fileName);
@@ -110,7 +88,6 @@ public class ChartController {
         log.info("Retrieving chart image: {}", fileName);
 
         try {
-            // Get the chart file
             Path filePath = Paths.get("charts").resolve(fileName).normalize();
             Resource resource = new UrlResource(filePath.toUri());
 
@@ -129,20 +106,13 @@ public class ChartController {
         }
     }
 
-    //
-    // Client-side rendering chart data endpoints (new implementation)
-    //
-
     @GetMapping("/data/dependency-status/{analysisId}")
     @Operation(summary = "Get dependency status chart data",
             description = "Retrieve raw data for client-side rendering of dependency status chart")
     public ResponseEntity<PieChartDataResponse> getDependencyStatusChartData(@PathVariable Long analysisId) {
         log.info("Generating dependency status chart data for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart data
         PieChartDataResponse chartData = chartCacheService.getCachedDependencyStatusChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
@@ -154,10 +124,7 @@ public class ChartController {
     public ResponseEntity<PieChartDataResponse> getVulnerabilityStatusChartData(@PathVariable Long analysisId) {
         log.info("Generating vulnerability status chart data for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart data
         PieChartDataResponse chartData = chartCacheService.getCachedVulnerabilityStatusChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
@@ -169,10 +136,7 @@ public class ChartController {
     public ResponseEntity<BarChartDataResponse> getVulnerabilitySeverityChartData(@PathVariable Long analysisId) {
         log.info("Generating vulnerability severity chart data for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart data
         BarChartDataResponse chartData = chartCacheService.getCachedVulnerabilitySeverityChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
@@ -184,20 +148,14 @@ public class ChartController {
     public ResponseEntity<PieChartDataResponse> getLicenseDistributionChartData(@PathVariable Long analysisId) {
         log.info("Generating license distribution chart data for analysis ID: {}", analysisId);
 
-        // Get the analysis
         DependencyAnalysis analysis = getDependencyAnalysisEntityById(analysisId);
-
-        // Generate the chart data
         PieChartDataResponse chartData = chartCacheService.getCachedLicenseDistributionChartData(analysisId, analysis);
 
         return ResponseEntity.ok(chartData);
     }
 
-    /**
-     * Helper method to get dependency analysis entity by ID
-     */
     private DependencyAnalysis getDependencyAnalysisEntityById(Long analysisId) {
         return dependencyAnalysisRepository.findById(analysisId)
-                .orElseThrow(() -> new ResourceNotFoundException("Analysis not found with ID: " + analysisId));
+                .orElseThrow(() -> new ResourceNotFoundException(ANALYSIS_NOT_FOUND_WITH_ID + analysisId));
     }
 } 

@@ -1,4 +1,4 @@
-package com.muratcan.yeldan.mavenanalyzer.dto;
+package com.muratcan.yeldan.mavenanalyzer.dto.request;
 
 import com.muratcan.yeldan.mavenanalyzer.entity.Project.ProjectStatus;
 import jakarta.validation.constraints.NotBlank;

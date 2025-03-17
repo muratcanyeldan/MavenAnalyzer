@@ -1,7 +1,7 @@
 package com.muratcan.yeldan.mavenanalyzer.service;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AppSettingsRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.AppSettingsResponse;
 
 import java.util.List;
 
@@ -14,8 +14,4 @@ public interface AppSettingsService {
     List<String> getRestrictedLicenses();
 
     boolean isLicenseCheckingEnabled();
-
-    boolean isLicenseRestricted(String license);
-
-    int countLicenseIssues(List<String> licenses);
-} 
+}

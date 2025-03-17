@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/**
- * Response DTO for the OSS Index API
- */
 @Data
 @Builder
 @NoArgsConstructor

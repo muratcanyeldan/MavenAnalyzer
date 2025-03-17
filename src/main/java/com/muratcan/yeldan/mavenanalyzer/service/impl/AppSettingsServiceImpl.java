@@ -1,13 +1,13 @@
 package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsRequest;
-import com.muratcan.yeldan.mavenanalyzer.dto.AppSettingsResponse;
+import com.muratcan.yeldan.mavenanalyzer.dto.request.AppSettingsRequest;
+import com.muratcan.yeldan.mavenanalyzer.dto.response.AppSettingsResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.AppSettings;
 import com.muratcan.yeldan.mavenanalyzer.repository.AppSettingsRepository;
 import com.muratcan.yeldan.mavenanalyzer.service.AppSettingsService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +17,25 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AppSettingsServiceImpl implements AppSettingsService {
 
     private static final String DEFAULT_SETTINGS_KEY = "application";
     private static final List<String> DEFAULT_RESTRICTED_LICENSES = Arrays.asList("GPL", "AGPL");
+    private static final String LICENSE_UNKNOWN = "unknown";
 
     private final AppSettingsRepository appSettingsRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    private final AppSettingsService self;
+
+    public AppSettingsServiceImpl(AppSettingsRepository appSettingsRepository,
+                                  ApplicationEventPublisher eventPublisher,
+                                  @Lazy AppSettingsService self) {
+        this.appSettingsRepository = appSettingsRepository;
+        this.eventPublisher = eventPublisher;
+        this.self = self;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -40,7 +50,6 @@ public class AppSettingsServiceImpl implements AppSettingsService {
         AppSettings settings = getOrCreateSettings();
         boolean cacheSettingsChanged = false;
 
-        // Update settings with request data
         if (request.getLicenseCheckingEnabled() != null) {
             settings.setLicenseCheckingEnabled(request.getLicenseCheckingEnabled());
         }
@@ -75,7 +84,6 @@ public class AppSettingsServiceImpl implements AppSettingsService {
         settings = appSettingsRepository.save(settings);
         log.info("Updated application settings with ID: {}", settings.getId());
 
-        // Publish event to notify cache properties sync service if cache settings changed
         if (cacheSettingsChanged) {
             log.debug("Cache settings changed, publishing settings updated event");
             eventPublisher.publishEvent(settings);
@@ -98,46 +106,12 @@ public class AppSettingsServiceImpl implements AppSettingsService {
         return Boolean.TRUE.equals(settings.getLicenseCheckingEnabled());
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean isLicenseRestricted(String license) {
-        if (!isLicenseCheckingEnabled() || license == null) {
-            return false;
-        }
-
-        List<String> restrictedLicenses = getRestrictedLicenses();
-
-        // Consider "unknown" license as restricted
-        if ("unknown".equalsIgnoreCase(license)) {
-            return true;
-        }
-
-        // Normalize license name (to uppercase) and check if it contains any of the restricted licenses
-        String normalizedLicense = license.toUpperCase();
-        return restrictedLicenses.stream()
-                .map(String::toUpperCase)
-                .anyMatch(normalizedLicense::contains);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public int countLicenseIssues(List<String> licenses) {
-        if (!isLicenseCheckingEnabled() || licenses == null || licenses.isEmpty()) {
-            return 0;
-        }
-
-        return (int) licenses.stream()
-                .filter(this::isLicenseRestricted)
-                .count();
-    }
-
     private AppSettings getOrCreateSettings() {
         Optional<AppSettings> settingsOpt = appSettingsRepository.findByKey(DEFAULT_SETTINGS_KEY);
 
         if (settingsOpt.isPresent()) {
             return settingsOpt.get();
         } else {
-            // Create default settings
             AppSettings newSettings = AppSettings.builder()
                     .key(DEFAULT_SETTINGS_KEY)
                     .name("Application Settings")

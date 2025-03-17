@@ -1,4 +1,4 @@
-package com.muratcan.yeldan.mavenanalyzer.dto;
+package com.muratcan.yeldan.mavenanalyzer.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

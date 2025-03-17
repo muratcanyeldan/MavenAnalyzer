@@ -1,4 +1,4 @@
-package com.muratcan.yeldan.mavenanalyzer.dto;
+package com.muratcan.yeldan.mavenanalyzer.dto.response;
 
 import com.muratcan.yeldan.mavenanalyzer.entity.Project.ProjectStatus;
 import lombok.AllArgsConstructor;
@@ -23,8 +23,6 @@ public class ProjectResponse {
     private LocalDateTime updatedAt;
     private Integer totalAnalyses;
     private String lastAnalysisDate;
-
-    // Dependency statistics for the latest analysis
     private Integer dependencyCount;
     private Integer outdatedCount;
     private Integer vulnerableCount;

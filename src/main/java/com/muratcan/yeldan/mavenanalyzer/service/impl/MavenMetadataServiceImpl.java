@@ -1,14 +1,14 @@
 package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
+import com.muratcan.yeldan.mavenanalyzer.config.DynamicCacheProperties;
 import com.muratcan.yeldan.mavenanalyzer.service.MavenMetadataService;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -25,30 +25,26 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
 
     private static final String MAVEN_CENTRAL_BASE_URL = "https://repo1.maven.org/maven2/";
     private static final String POM_FILE_PATH = "%s/%s/%s/%s-%s.pom";
-    // Constant to indicate BOM-managed dependencies
     private static final String MANAGED_BY_BOM = "MANAGED_BY_BOM";
     private final RestTemplate restTemplate;
-    @Getter
-    @Value("${license.cache.enabled:true}")
-    private boolean licenseCacheEnabled;
 
-    @Getter
-    @Value("${version.estimate.cache.enabled:true}")
-    private boolean versionEstimateCacheEnabled;
+    private final MavenMetadataService self;
 
-    public MavenMetadataServiceImpl() {
+    private final DynamicCacheProperties cacheProperties;
+
+    public MavenMetadataServiceImpl(@Lazy MavenMetadataService self, DynamicCacheProperties cacheProperties) {
         this.restTemplate = new RestTemplate();
+        this.self = self;
+        this.cacheProperties = cacheProperties;
     }
 
     @Override
     @Cacheable(value = "licenseCache", key = "#groupId + ':' + #artifactId + ':' + #version",
-            unless = "#result.isEmpty()", condition = "#root.target.licenseCacheEnabled")
+            unless = "#result.isEmpty()", condition = "#root.target.cacheProperties.licenseCacheEnabled")
     public Optional<String> fetchLicenseInfo(String groupId, String artifactId, String version) {
         try {
-            // Convert groupId to path format (org.springframework becomes org/springframework)
             String groupPath = groupId.replace('.', '/');
 
-            // Construct POM URL
             String pomUrl = String.format(
                     MAVEN_CENTRAL_BASE_URL + POM_FILE_PATH,
                     groupPath, artifactId, version, artifactId, version
@@ -56,20 +52,17 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
 
             log.debug("Fetching POM from: {}", pomUrl);
 
-            // Fetch POM file
             String pomContent = restTemplate.getForObject(pomUrl, String.class);
             if (pomContent == null) {
                 log.warn("Could not fetch POM for {}:{}:{}", groupId, artifactId, version);
                 return Optional.empty();
             }
 
-            // Parse POM to extract license info
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(new StringReader(pomContent));
 
             Optional<String> license = extractLicenseFromModel(model);
 
-            // If no license found in the artifact's POM, try to check parent POM if available
             if (license.isEmpty() && model.getParent() != null) {
                 String parentGroupId = model.getParent().getGroupId();
                 String parentArtifactId = model.getParent().getArtifactId();
@@ -78,8 +71,7 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
                 log.debug("No license found in artifact POM, checking parent: {}:{}:{}",
                         parentGroupId, parentArtifactId, parentVersion);
 
-                // Recursive call to fetch parent's license
-                Optional<String> parentLicense = fetchLicenseInfo(parentGroupId, parentArtifactId, parentVersion);
+                Optional<String> parentLicense = self.fetchLicenseInfo(parentGroupId, parentArtifactId, parentVersion);
                 if (parentLicense.isPresent()) {
                     log.info("Found license in parent POM for {}:{}:{}: {}",
                             groupId, artifactId, version, parentLicense.get());
@@ -100,23 +92,19 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
 
     @Override
     @Cacheable(value = "versionEstimateCache", key = "#groupId + ':' + #artifactId + ':' + #parentGroupId + ':' + #parentArtifactId + ':' + #parentVersion",
-            unless = "#result.isEmpty()", condition = "#root.target.versionEstimateCacheEnabled")
+            unless = "#result.isEmpty()", condition = "#root.target.cacheProperties.versionEstimateCacheEnabled")
     public Optional<String> estimateBomManagedVersion(String groupId, String artifactId,
                                                       String parentGroupId, String parentArtifactId, String parentVersion) {
         if (groupId == null || artifactId == null) {
             return Optional.empty();
         }
 
-        // If we have parent BOM info, simply indicate it's managed by a BOM
         if (parentGroupId != null && parentArtifactId != null && parentVersion != null) {
-            // For Spring Boot-related dependencies, we can be more specific
             if (parentGroupId.equals("org.springframework.boot") && parentArtifactId.contains("spring-boot")) {
                 log.debug("Dependency {}:{} is managed by Spring Boot BOM {}",
                         groupId, artifactId, parentVersion);
                 return Optional.of(MANAGED_BY_BOM + " (Spring Boot " + parentVersion + ")");
-            }
-            // For other BOMs, provide the parent info
-            else {
+            } else {
                 log.debug("Dependency {}:{} is managed by BOM {}:{}:{}",
                         groupId, artifactId, parentGroupId, parentArtifactId, parentVersion);
                 return Optional.of(MANAGED_BY_BOM + " (" + parentGroupId + ":" + parentArtifactId + ")");

@@ -4,9 +4,6 @@ import com.muratcan.yeldan.mavenanalyzer.dto.chart.BarChartDataResponse;
 import com.muratcan.yeldan.mavenanalyzer.dto.chart.PieChartDataResponse;
 import com.muratcan.yeldan.mavenanalyzer.entity.DependencyAnalysis;
 
-/**
- * Service for generating chart data for client-side rendering
- */
 public interface ChartDataService {
 
     /**

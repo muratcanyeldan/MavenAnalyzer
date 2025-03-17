@@ -32,11 +32,6 @@ public class ChartGeneratorServiceImpl implements ChartGeneratorService {
     private static final String STATUS_UNIDENTIFIED = "Unidentified";
     // Constants for chart types
     private static final String CHART_TYPE_PIE = "Pie Chart";
-    private static final String CHART_TYPE_BAR = "Bar Chart";
-    private static final String CHART_TYPE_LINE = "Line Chart";
-    // Constants for chart series labels
-    private static final String SERIES_PREVIOUS = "Previous";
-    private static final String SERIES_CURRENT = "Current";
     // Constants for error messages
     private static final String ERROR_TITLE = "Error";
     private static final String ERROR_GENERATE_CHART_PREFIX = "Failed to generate chart: ";

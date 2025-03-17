@@ -2,7 +2,6 @@ package com.muratcan.yeldan.mavenanalyzer.service.impl;
 
 import com.muratcan.yeldan.mavenanalyzer.config.DynamicCacheProperties;
 import com.muratcan.yeldan.mavenanalyzer.entity.AppSettings;
-import com.muratcan.yeldan.mavenanalyzer.repository.AppSettingsRepository;
 import com.muratcan.yeldan.mavenanalyzer.service.CacheManagementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +15,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class CachePropertiesSyncService {
 
-    private final AppSettingsRepository appSettingsRepository;
     private final DynamicCacheProperties dynamicCacheProperties;
     private final CacheManagementService cacheManagementService;
 

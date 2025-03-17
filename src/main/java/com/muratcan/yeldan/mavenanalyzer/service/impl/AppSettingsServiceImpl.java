@@ -7,7 +7,6 @@ import com.muratcan.yeldan.mavenanalyzer.repository.AppSettingsRepository;
 import com.muratcan.yeldan.mavenanalyzer.service.AppSettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,19 +21,14 @@ public class AppSettingsServiceImpl implements AppSettingsService {
 
     private static final String DEFAULT_SETTINGS_KEY = "application";
     private static final List<String> DEFAULT_RESTRICTED_LICENSES = Arrays.asList("GPL", "AGPL");
-    private static final String LICENSE_UNKNOWN = "unknown";
 
     private final AppSettingsRepository appSettingsRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    private final AppSettingsService self;
-
     public AppSettingsServiceImpl(AppSettingsRepository appSettingsRepository,
-                                  ApplicationEventPublisher eventPublisher,
-                                  @Lazy AppSettingsService self) {
+                                  ApplicationEventPublisher eventPublisher) {
         this.appSettingsRepository = appSettingsRepository;
         this.eventPublisher = eventPublisher;
-        this.self = self;
     }
 
     @Override

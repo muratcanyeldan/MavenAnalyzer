@@ -157,9 +157,9 @@ public class PomParserServiceImpl implements PomParserService {
             VersionResolutionResult result = resolveBomManagedVersion(
                     dependency, parentInfo, managedVersions, properties, pomDirectory);
 
-            version = result.getVersion();
-            estimatedVersion = result.getEstimatedVersion();
-            isBomManaged = result.isBomManaged();
+            version = result.version();
+            estimatedVersion = result.estimatedVersion();
+            isBomManaged = result.bomManaged();
         }
 
         DependencyInfo dependencyInfo = DependencyInfo.builder()
@@ -189,10 +189,10 @@ public class PomParserServiceImpl implements PomParserService {
         Optional<String> estimatedVersion = Optional.empty();
         boolean isBomManaged = true;
 
-        if (parentInfo.getParentVersion() != null &&
+        if (parentInfo.parentVersion() != null &&
                 dependency.getGroupId().startsWith("org.springframework.boot")) {
 
-            version = parentInfo.getParentVersion() + " (from parent)";
+            version = parentInfo.parentVersion() + " (from parent)";
         } else {
             String key = dependency.getGroupId() + ":" + dependency.getArtifactId();
             String managedVersion = managedVersions.get(key);
@@ -237,9 +237,9 @@ public class PomParserServiceImpl implements PomParserService {
         estimatedVersion = mavenMetadataService.estimateBomManagedVersion(
                 groupId,
                 artifactId,
-                parentInfo.getParentGroupId(),
-                parentInfo.getParentArtifactId(),
-                parentInfo.getParentVersion()
+                parentInfo.parentGroupId(),
+                parentInfo.parentArtifactId(),
+                parentInfo.parentVersion()
         );
 
         if (estimatedVersion.isPresent()) {
@@ -279,51 +279,10 @@ public class PomParserServiceImpl implements PomParserService {
         return version;
     }
 
-    private static class ParentInfo {
-        private final String parentGroupId;
-        private final String parentArtifactId;
-        private final String parentVersion;
+    private record ParentInfo(String parentGroupId, String parentArtifactId, String parentVersion) {
 
-        public ParentInfo(String parentGroupId, String parentArtifactId, String parentVersion) {
-            this.parentGroupId = parentGroupId;
-            this.parentArtifactId = parentArtifactId;
-            this.parentVersion = parentVersion;
-        }
-
-        public String getParentGroupId() {
-            return parentGroupId;
-        }
-
-        public String getParentArtifactId() {
-            return parentArtifactId;
-        }
-
-        public String getParentVersion() {
-            return parentVersion;
-        }
     }
 
-    private static class VersionResolutionResult {
-        private final String version;
-        private final Optional<String> estimatedVersion;
-        private final boolean bomManaged;
-
-        public VersionResolutionResult(String version, Optional<String> estimatedVersion, boolean bomManaged) {
-            this.version = version;
-            this.estimatedVersion = estimatedVersion;
-            this.bomManaged = bomManaged;
-        }
-
-        public String getVersion() {
-            return version;
-        }
-
-        public Optional<String> getEstimatedVersion() {
-            return estimatedVersion;
-        }
-
-        public boolean isBomManaged() {
-            return bomManaged;
-        }
+    private record VersionResolutionResult(String version, Optional<String> estimatedVersion, boolean bomManaged) {
     }
 } 

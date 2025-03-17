@@ -17,13 +17,13 @@ public class CacheManagementServiceImpl implements CacheManagementService {
     private static final List<String> VULNERABILITY_CACHES = Arrays.asList(
             "vulnerabilities", "vulnerabilityCounts"
     );
-    private static final List<String> LICENSE_CACHES = Arrays.asList(
+    private static final List<String> LICENSE_CACHES = List.of(
             "licenseCache"
     );
     private static final List<String> CHART_CACHES = Arrays.asList(
             "chartCache", "chartDataCache"
     );
-    private static final List<String> VERSION_ESTIMATE_CACHES = Arrays.asList(
+    private static final List<String> VERSION_ESTIMATE_CACHES = List.of(
             "versionEstimateCache"
     );
     private final CacheManager cacheManager;

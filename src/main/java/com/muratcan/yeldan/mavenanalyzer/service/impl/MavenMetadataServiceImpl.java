@@ -7,8 +7,8 @@ import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -27,15 +27,18 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
     private static final String POM_FILE_PATH = "%s/%s/%s/%s-%s.pom";
     private static final String MANAGED_BY_BOM = "MANAGED_BY_BOM";
     private final RestTemplate restTemplate;
-
-    private final MavenMetadataService self;
+    private final ObjectProvider<MavenMetadataService> mavenMetadataServiceProvider;
 
     private final DynamicCacheProperties cacheProperties;
 
-    public MavenMetadataServiceImpl(@Lazy MavenMetadataService self, DynamicCacheProperties cacheProperties) {
+    public MavenMetadataServiceImpl(DynamicCacheProperties cacheProperties, ObjectProvider<MavenMetadataService> mavenMetadataServiceProvider) {
         this.restTemplate = new RestTemplate();
-        this.self = self;
         this.cacheProperties = cacheProperties;
+        this.mavenMetadataServiceProvider = mavenMetadataServiceProvider;
+    }
+
+    private MavenMetadataService getProxiedSelf() {
+        return mavenMetadataServiceProvider.getObject();
     }
 
     @Override
@@ -71,7 +74,7 @@ public class MavenMetadataServiceImpl implements MavenMetadataService {
                 log.debug("No license found in artifact POM, checking parent: {}:{}:{}",
                         parentGroupId, parentArtifactId, parentVersion);
 
-                Optional<String> parentLicense = self.fetchLicenseInfo(parentGroupId, parentArtifactId, parentVersion);
+                Optional<String> parentLicense = getProxiedSelf().fetchLicenseInfo(parentGroupId, parentArtifactId, parentVersion);
                 if (parentLicense.isPresent()) {
                     log.info("Found license in parent POM for {}:{}:{}: {}",
                             groupId, artifactId, version, parentLicense.get());

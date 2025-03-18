@@ -67,10 +67,6 @@ This creates an optimized production build in the `build` folder that can be dep
 - `/src/services`: API services and utilities
 - `/src/assets`: Static assets like images and icons
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## License
 
 This project is licensed under the MIT License. 

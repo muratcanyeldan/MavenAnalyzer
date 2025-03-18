@@ -106,7 +106,6 @@ const Projects = () => {
     setLoading(true);
     try {
       const response = await api.projects.getAll();
-      console.log('API Response:', response.data);
       setProjects(response.data || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -133,14 +132,10 @@ const Projects = () => {
     }
 
     try {
-      console.log('Creating project with data:', newProject);
       const response = await api.projects.create(newProject);
-      console.log('Create project response:', response.data);
-      
-      // Add the new project to the list
+
       setProjects([...projects, response.data]);
       
-      // Reset form and close dialog
       setOpenNewProject(false);
       setNewProject({
         name: '',

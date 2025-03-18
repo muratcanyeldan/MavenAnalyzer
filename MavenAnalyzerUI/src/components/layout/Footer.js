@@ -76,7 +76,6 @@ const Footer = () => {
 
   const handleSubmitForm = (e) => {
     e.preventDefault();
-    console.log('Support form submitted:', contactForm);
     // In a real app, you would send this data to your backend
     // For now, we'll just simulate a successful submission
     setFormSubmitted(true);

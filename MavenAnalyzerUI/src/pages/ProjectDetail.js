@@ -114,9 +114,7 @@ const ProjectDetail = () => {
               date: formatDate(analysis.analysisDate) // Use the same formatDate function
             }));
             setAnalyses(formattedAnalyses);
-            console.log('Analyses loaded:', formattedAnalyses);
           } else {
-            console.log('No analyses found for project');
             setAnalyses([]);
           }
         } catch (analysesError) {

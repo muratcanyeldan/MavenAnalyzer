@@ -94,8 +94,7 @@ const AnalysisDetail = () => {
   const fetchCharts = useCallback(async () => {
     setChartsLoading(true);
     try {
-      console.log(`Fetching chart data for analysis ID: ${analysisId}`);
-      
+
       const [
         dependencyStatusResponse, 
         vulnerabilityStatusResponse, 
@@ -115,7 +114,6 @@ const AnalysisDetail = () => {
         licenses: licenseDistributionResponse.data
       });
       
-      console.log('Chart data loaded successfully');
       setShouldRefreshCharts(false);
     } catch (error) {
       console.error('Error fetching chart data:', error);
@@ -143,19 +141,12 @@ const AnalysisDetail = () => {
   // Poll for vulnerability updates
   const pollForVulnerabilityUpdates = useCallback(async () => {
     try {
-      console.log(`Starting vulnerability polling for analysis ID: ${analysisId}`);
-      
+
       // Set an interval to check for vulnerability updates
       const intervalId = setInterval(async () => {
         try {
           // Use the specific vulnerability status endpoint for more efficient polling
-          console.log(`Polling vulnerability status for analysis ID: ${analysisId}`);
           const response = await api.dependencyAnalysis.getVulnerabilityStatus(analysisId);
-          
-          console.log(`Received vulnerability status for analysis ID: ${analysisId}`, {
-            status: response.data.vulnerabilityCheckStatus,
-            dependencies: response.data.dependencies?.length || 0
-          });
           
           // Calculate the progress percentage for the UI
           const totalDeps = response.data.dependencies?.length || 0;
@@ -185,7 +176,6 @@ const AnalysisDetail = () => {
           
           // If vulnerability checking is complete, stop polling
           if (response.data.vulnerabilityCheckStatus !== 'IN_PROGRESS') {
-            console.log('Vulnerability check completed - state update will trigger chart refresh');
             clearInterval(intervalId);
             setVulnerabilitiesLoading(false);
             
@@ -196,8 +186,6 @@ const AnalysisDetail = () => {
               severity: response.data.vulnerabilityCheckStatus === 'COMPLETED' ? 'success' : 'info'
             });
             
-            // No need to call fetchCharts directly - use the dedicated state variable
-            console.log('Setting shouldRefreshCharts to trigger chart refresh');
             setShouldRefreshCharts(true);
           }
         } catch (pollingError) {
@@ -214,7 +202,6 @@ const AnalysisDetail = () => {
       
       // Clean up the interval when the component unmounts
       return () => {
-        console.log(`Cleaning up polling interval for analysis ID: ${analysisId}`);
         clearInterval(intervalId);
       };
     } catch (error) {
@@ -231,7 +218,6 @@ const AnalysisDetail = () => {
   // Add a dedicated effect just for chart refreshes
   useEffect(() => {
     if (shouldRefreshCharts && analysisId && analysis?.id) {
-      console.log('Refreshing charts due to shouldRefreshCharts flag');
       fetchCharts();
     }
   }, [shouldRefreshCharts, analysisId, analysis?.id, fetchCharts]);
@@ -239,7 +225,6 @@ const AnalysisDetail = () => {
   // Modified effect to fetch charts on initial load
   useEffect(() => {
     if (analysisId && analysis?.id && !shouldRefreshCharts) {
-      console.log('Initial chart load for new analysis data');
       fetchCharts();
     }
   }, [analysisId, analysis?.id, fetchCharts, shouldRefreshCharts]);
@@ -256,14 +241,10 @@ const AnalysisDetail = () => {
       setLoading(true);
       try {
         // Get analysis details
-        console.log(`Fetching analysis data for ID: ${analysisId}`);
         const response = await api.dependencyAnalysis.getById(analysisId);
-        console.log('Analysis API response:', response.data);
-        
-        // Additional debugging for dependencies
+
         const dependencies = response.data.dependencies || [];
-        console.log(`Received ${dependencies.length} dependencies from API`);
-        
+
         // Calculate total vulnerabilities for the header stats
         const totalVulnerabilities = dependencies.reduce((total, dep) => total + (dep.vulnerableCount || 0), 0);
         
@@ -314,17 +295,14 @@ const AnalysisDetail = () => {
       }
     };
 
-    console.log('Initial data fetch for analysisId:', analysisId);
     fetchAnalysisData();
-  }, [analysisId, pollForVulnerabilityUpdates]);
+  }, [analysisId, pollForVulnerabilityUpdates, previousVulnerabilityStatus]);
 
   const handleTabChange = (event, newValue) => {
-    console.log('Tab changed to:', newValue);
     setTabValue(newValue);
     
     // Auto refresh vulnerability status when switching to the vulnerabilities tab
     if (newValue === 3 && analysis && analysis.vulnerabilityCheckStatus === 'IN_PROGRESS') {
-      console.log('Auto-refreshing vulnerability status when switching to vulnerabilities tab');
       refreshVulnerabilityStatus();
     }
   };
@@ -460,10 +438,8 @@ const AnalysisDetail = () => {
   const fetchRestrictedLicenses = async () => {
     try {
       const response = await api.settings.getSettings();
-      console.log('Fetched settings for license checking:', response.data);
       if (response.data && response.data.restrictedLicenses) {
         setRestrictedLicenses(response.data.restrictedLicenses);
-        console.log('Updated restricted licenses from settings:', response.data.restrictedLicenses);
       }
     } catch (error) {
       console.error('Error fetching restricted licenses from settings:', error);
@@ -485,16 +461,15 @@ const AnalysisDetail = () => {
       return;
     }
     
-    console.log(`Attempting to delete analysis with ID: ${numericId}`);
-    
+
     try {
       // Show deletion in progress
       enqueueSnackbar('Deleting analysis...', { variant: 'info' });
       
       // Make the API call with explicit error handling and using the numeric ID
+      // eslint-disable-next-line no-unused-vars
       const response = await api.dependencyAnalysis.delete(numericId);
-      console.log('Delete API response:', response);
-      
+
       // Success message and navigation
       enqueueSnackbar('Analysis deleted successfully', { variant: 'success' });
       
@@ -557,8 +532,6 @@ const AnalysisDetail = () => {
           color="error"
           startIcon={<DeleteIcon />}
           onClick={() => {
-            console.log('Delete button clicked, opening confirmation dialog');
-            console.log('Analysis ID:', analysisId);
             setConfirmDelete(true);
           }}
         >
@@ -1270,11 +1243,9 @@ const AnalysisDetail = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {console.log('Current restricted licenses for filtering:', restrictedLicenses)}
                 {analysis.dependencies && analysis.dependencies.filter(dep => {
                   // Skip dependencies without licenses
                   if (!dep.license) {
-                    console.log(`Dependency ${dep.groupId}:${dep.artifactId} has no license`);
                     return true; // Missing licenses should be flagged
                   }
                   
@@ -1285,10 +1256,7 @@ const AnalysisDetail = () => {
                   const isRestricted = restrictedLicenses.some(restricted => 
                     normalizedLicense.includes(restricted.toUpperCase())
                   );
-                  
-                  if (isRestricted) {
-                    console.log(`Dependency ${dep.groupId}:${dep.artifactId} has restricted license: ${dep.license}`);
-                  }
+
                   return isRestricted;
                 }).map(dep => (
                   <TableRow key={dep.id} hover>

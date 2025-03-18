@@ -105,11 +105,9 @@ public class ProjectController {
     public ResponseEntity<?> getPomFileFromPath(@PathVariable Long id) {
         log.info("Attempting to read POM file for project ID: {}", id);
 
-        // Get the project by ID
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + id));
 
-        // Check if project has a default POM path
         if (project.getDefaultPomPath() == null || project.getDefaultPomPath().isEmpty()) {
             log.warn("No default POM path set for project ID: {}", id);
             return ResponseEntity

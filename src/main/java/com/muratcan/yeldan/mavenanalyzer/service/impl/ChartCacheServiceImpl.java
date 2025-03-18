@@ -38,7 +38,6 @@ public class ChartCacheServiceImpl implements ChartCacheService {
     @Cacheable(value = "chartCache", key = "'license-distribution-' + #analysisId")
     public ChartResponse getCachedLicenseDistributionChart(Long analysisId, DependencyAnalysis analysis) {
         log.debug("Generating or retrieving cached license distribution chart for analysis ID: {}", analysisId);
-        // For demo purposes, we'll reuse the dependency status chart since we don't have a dedicated license chart yet
         return chartGeneratorService.generateDependencyStatusChart(analysis);
     }
 

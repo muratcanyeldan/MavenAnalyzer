@@ -193,9 +193,7 @@ const AnalysisHistory = () => {
       });
       return;
     }
-    
-    console.log(`Attempting to delete analysis with ID: ${numericId}`);
-    
+
     try {
       // Show deletion in progress
       setSnackbar({
@@ -205,9 +203,9 @@ const AnalysisHistory = () => {
       });
       
       // Make the API call
+      // eslint-disable-next-line no-unused-vars
       const response = await api.dependencyAnalysis.delete(numericId);
-      console.log('Delete API response:', response);
-      
+
       // Success message
       setSnackbar({
         open: true,
@@ -234,11 +232,9 @@ const AnalysisHistory = () => {
       
       // Check if current page would be empty after deletion
       const totalPages = Math.ceil(filteredAnalyses.length / rowsPerPage);
-      console.log(`Current page: ${page}, Total pages after deletion: ${totalPages}`);
-      
+
       // If we're on a page that would now be empty (except page 1) and there are other pages
       if (page > totalPages && page > 1) {
-        console.log(`Moving to page ${totalPages} because current page ${page} would be empty`);
         setPage(totalPages);
       }
       
@@ -390,7 +386,6 @@ const AnalysisHistory = () => {
                           size="small" 
                           color="error"
                           onClick={() => {
-                            console.log('Delete button clicked for analysis:', analysis.id);
                             setAnalysisToDelete(analysis.id);
                             setConfirmDelete(true);
                           }}

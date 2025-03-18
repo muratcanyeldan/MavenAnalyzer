@@ -66,7 +66,6 @@ const NewAnalysis = () => {
         
         // If project has a defaultPomPath, use it
         if (response.data.defaultPomPath) {
-          console.log('Found default POM path:', response.data.defaultPomPath);
           setPomDirectoryPath(response.data.defaultPomPath);
           setUsesDefaultPomPath(true);
           
@@ -75,11 +74,9 @@ const NewAnalysis = () => {
           setError(null); // Clear any previous errors
           
           try {
-            console.log('Attempting to load POM from default path...');
             const pomResponse = await api.projects.getPomFromDefaultPath(projectId);
             
             if (pomResponse.data && pomResponse.data.content) {
-              console.log('Successfully loaded POM content, content length:', pomResponse.data.content.length);
               setPomContent(pomResponse.data.content);
               
               // Make sure we're properly setting the flag for using default path
@@ -100,7 +97,6 @@ const NewAnalysis = () => {
             // Don't reset active step - let user see the error
           }
         } else {
-          console.log('No default POM path found for project');
         }
       } catch (error) {
         console.error('Error fetching project:', error);
@@ -196,11 +192,9 @@ const NewAnalysis = () => {
     // If we don't have POM content but we do have a default path, try to load it
     if (!pomContent && usesDefaultPomPath && project?.defaultPomPath) {
       try {
-        console.log('Attempting to load POM from default path before analysis...');
         const pomResponse = await api.projects.getPomFromDefaultPath(projectId);
         
         if (pomResponse.data && pomResponse.data.content) {
-          console.log('Successfully loaded POM content for analysis');
           setPomContent(pomResponse.data.content);
         } else {
           console.error('No content in POM response:', pomResponse);
@@ -243,8 +237,7 @@ const NewAnalysis = () => {
         analysisData.pomDirectoryPath = pomDirectoryPath;
       }
       
-      console.log('Submitting analysis request:', analysisData);
-      
+
       const response = await api.dependencyAnalysis.create(projectId, analysisData);
       
       toast.success('Analysis started successfully!');

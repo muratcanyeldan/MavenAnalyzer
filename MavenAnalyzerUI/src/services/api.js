@@ -5,7 +5,6 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api')
   : 'http://localhost:8080/api'; // Always use absolute URL in development
 
-console.log('API Base URL:', API_BASE_URL); // Debug logging
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -41,11 +40,9 @@ apiClient.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           // Handle unauthorized
-          console.log('Unauthorized access');
           // Redirect to login or refresh token
           break;
         case 404:
-          console.log('Resource not found');
           break;
         default:
           break;
@@ -97,11 +94,9 @@ const api = {
         return Promise.reject(new Error('Invalid analysis ID format'));
       }
       
-      console.log(`Making DELETE request to ${API_BASE_URL}/analyses/${id}`);
-      
+
       return apiClient.delete(`/analyses/${id}`)
         .then(response => {
-          console.log('Delete successful:', response);
           return response;
         })
         .catch(error => {
@@ -128,7 +123,6 @@ const api = {
     // Initiates an analysis and handles immediate redirection to the analysis detail page
     startAnalysisAndRedirect: async (projectId, data, navigate, toastFn) => {
       try {
-        console.log('Starting analysis with immediate redirection');
         let response;
         
         if (projectId) {
@@ -145,9 +139,7 @@ const api = {
           if (toastFn) toastFn.error('Failed to start analysis: No analysis ID returned');
           return null;
         }
-        
-        console.log(`Analysis started with ID: ${analysisId}, redirecting immediately`);
-        
+
         // Show notification if provided
         if (toastFn) {
           toastFn.success('Analysis started! Redirecting to results page where vulnerability scanning will continue in the background.');
@@ -196,11 +188,9 @@ const api = {
   // Settings endpoints
   settings: {
     getSettings: () => {
-      console.log('Getting settings from:', `${API_BASE_URL}/settings`);
       return apiClient.get('/settings');
     },
     updateSettings: (data) => {
-      console.log('Updating settings at:', `${API_BASE_URL}/settings`, 'with data:', data);
       return apiClient.put('/settings', data);
     },
   },

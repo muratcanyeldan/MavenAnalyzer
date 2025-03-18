@@ -10,7 +10,6 @@ A tool for checking updates for Maven dependencies in POM files. This applicatio
 - **Historical Tracking**: Track dependency status changes over time
 - **Visualization**: Generate charts to visualize dependency status
 - **Project Management**: Organize analyses by projects
-- **Environment-Aware**: Automatically adapts to Docker or local environment
 - **REST API**: Full-featured RESTful API for integration with other tools
 
 ## Technology Stack
@@ -29,35 +28,20 @@ A tool for checking updates for Maven dependencies in POM files. This applicatio
 
 - Java 21
 - Docker and Docker Compose (for containerized deployment)
-- Maven (optional, for local development)
 
-### Running with Docker (Fully Containerized)
+### Running in Hybrid Mode (Recommended for Local Development)
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/maven-analyzer.git
-   cd maven-analyzer
-   ```
+**This is the recommended approach for local development, especially when you need to analyze Maven projects on your local filesystem.**
 
-2. Build and run the application using Docker Compose:
-   ```
-   docker compose up -d
-   ```
+The hybrid mode setup:
+- UI, MySQL, and Redis run in Docker containers
+- Backend runs locally, allowing it to access your local filesystem paths
 
-3. Access the application:
-   - API: http://localhost:8080/api
-   - UI: http://localhost:3000
-   - Swagger UI: http://localhost:8080/swagger-ui/index.html
-
-In Docker mode, the system automatically creates a temporary Maven project for each analysis, so there's no need for filesystem access to your local projects.
-
-### Running in Hybrid Mode (Backend on Host, Other Services in Docker)
-
-This approach is useful when you want to analyze Maven projects on your local filesystem:
+Steps to set up:
 
 1. Run UI, MySQL, and Redis with Docker Compose:
    ```
-   docker compose -f docker-compose.local.yml up -d
+   docker compose up -d
    ```
 
 2. Run the backend locally:
@@ -65,37 +49,21 @@ This approach is useful when you want to analyze Maven projects on your local fi
    ./mvnw spring-boot:run
    ```
 
+Alternatively, you can use the convenience script:
+   ```
+   ./start-local.sh
+   ```
+
 3. Access the application:
    - API: http://localhost:8080/api
    - UI: http://localhost:3000
    - Swagger UI: http://localhost:8080/swagger-ui/index.html
 
-## Environment-aware POM Handling
-
-The application automatically detects whether it's running in a Docker container or on a local machine, and adapts its behavior accordingly:
-
-### Docker Environment (Automatic Mode)
-
-When running in Docker:
-- The system automatically creates a temporary Maven project structure for each POM analysis
-- No local file system paths are required from the user
-- All dependencies are properly resolved using this temporary project structure
-- The temporary project is automatically cleaned up after analysis
-- The UI automatically adapts to hide file path input fields
-
-### Local Environment (Hybrid Mode)
-
-When running on a local machine:
-- The UI shows options for providing a local file system path to the directory containing your POM file
-- This allows for more accurate resolution of dependencies, especially those managed by BOMs
-- If no path is provided but transitive dependencies are required, the application falls back to creating a temporary project
-- You can analyze both local and remote POM files
-
-This adaptive approach ensures the application works optimally in any deployment scenario.
+**Important:** The backend needs to run locally (not in Docker) because it requires access to local filesystem paths for proper Maven project analysis. This allows you to analyze projects directly from your local machine.
 
 ## Usage Workflow
 
-1. **Create Project** (optional): Create a project to organize related analyses
+1. **Create Project**: Create a project to organize related analyses
 2. **Upload/Paste POM**: Either upload a POM file or paste its content
 3. **Configure Analysis**: Choose analysis options (vulnerability checks, transitive dependencies, etc.)
 4. **View Results**: See dependency status, available updates, and potential vulnerabilities
@@ -123,12 +91,6 @@ This adaptive approach ensures the application works optimally in any deployment
 | GET | `/api/analyses/project/{projectId}` | Get analysis history for a project |
 | GET | `/api/analyses/project/{projectId}/latest` | Get the latest analysis for a project |
 | DELETE | `/api/analyses/{id}` | Delete an analysis |
-
-### Environment Information
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/environment` | Get information about the runtime environment |
 
 ## Usage Examples
 
@@ -164,26 +126,14 @@ curl -X GET 'http://localhost:8080/api/analyses/project/1'
 
 ## How It Works
 
-1. **Environment Detection**: The application detects whether it's running in Docker or on a local machine
-2. **POM Handling**: 
-   - In Docker: Creates a temporary Maven project with the provided POM content
-   - On local machine: Can use paths to existing projects or create temporary projects
-3. **POM Parsing**: Extracts dependency information including versions
-4. **Version Checking**: Uses the Maven Repository API to check for newer versions
-5. **Analysis**: Categorizes dependencies as up-to-date, outdated, or unidentified
-6. **Vulnerability Scanning**: Checks dependencies against known vulnerabilities (demo feature)
-7. **Visualization**: Generates charts showing the distribution of dependency statuses
-8. **Notification**: Can send notifications when analysis completes
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. **POM Handling**: Can use paths to existing projects
+2. **POM Parsing**: Extracts dependency information including versions
+3. **Version Checking**: Uses the Maven Repository API to check for newer versions
+4. **Analysis**: Categorizes dependencies as up-to-date, outdated, or unidentified
+5. **Vulnerability Scanning**: Checks dependencies against known vulnerabilities
+6. **Visualization**: Generates charts showing the distribution of dependency statuses
+7. **Notification**: Can send notifications when analysis completes
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- This application uses the [Maven Repository API](https://central.sonatype.org/search/rest-api-guide/) for retrieving dependency information
-- Charts are generated using [JFreeChart](https://www.jfree.org/jfreechart/) 

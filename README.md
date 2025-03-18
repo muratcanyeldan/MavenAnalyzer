@@ -1,3 +1,18 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+<a href="https://muratcanyeldan.dev" target="_blank">
+    <img src="https://img.shields.io/badge/My_Website-muratcanyeldan.dev-2ea44f?style=for-the-badge&logo=firefox&logoColor=white" alt="mywebsite logo"  />
+</a>
+
+[![LinkedIn](https://img.shields.io/badge/linkedin-%230077B5.svg?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/muratcanyeldan/)
+&nbsp;
+[![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/muratcanyeldan)
+&nbsp;
+
+# My Related Articles on Medium
+
+[![Medium](https://img.shields.io/badge/Medium-12100E?style=for-the-badge&logo=medium&logoColor=white) How I Created My Own Maven Dependency Analyzer for Keeping Track of My Projects - Part 1](https://muratcanyeldan.com/how-i-created-my-own-maven-dependency-analyzer-for-keeping-track-of-my-projects-part-1-346b516c86b9)
+
 # Maven Dependency Analyzer
 
 A tool for checking updates for Maven dependencies in POM files. This application helps you identify outdated dependencies, track dependency update history, and visualize dependency status through charts.

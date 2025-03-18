@@ -94,27 +94,53 @@ const AnalysisDetail = () => {
   const fetchCharts = useCallback(async () => {
     setChartsLoading(true);
     try {
+      const loadChartData = async () => {
+        if (!analysisId || !analysis) {
+          return;
+        }
+        
+        const [
+          dependencyStatusResponse, 
+          vulnerabilityStatusResponse, 
+          vulnerabilitySeverityResponse,
+          licenseDistributionResponse
+        ] = await Promise.all([
+          api.charts.getDependencyStatusData(analysisId),
+          api.charts.getVulnerabilityStatusData(analysisId),
+          api.charts.getVulnerabilitySeverityData(analysisId),
+          api.charts.getLicenseDistributionData(analysisId)
+        ]);
+        
+        // Check if there are actual vulnerabilities in the analysis
+        const hasActualVulnerabilities = analysis?.dependencies?.some(dep => 
+          dep.vulnerabilities && dep.vulnerabilities.length > 0
+        );
+        
+        // Check if the chart data shows no vulnerabilities
+        const severityData = vulnerabilitySeverityResponse.data;
+        const showsNoVulnerabilities = 
+          severityData.data && 
+          severityData.data.length === 1 && 
+          severityData.data[0].category === 'No Vulnerabilities';
+        
+        // If there are vulnerabilities but chart shows none, use the analysis data directly
+        let updatedSeverityData = severityData;
+        if (hasActualVulnerabilities && showsNoVulnerabilities) {
+          console.log('Detected inconsistency: Analysis has vulnerabilities but chart shows none. Using analysis data directly.');
+          updatedSeverityData = analysis; // Use analysis data directly which will be processed by the chart component
+        }
+        
+        setCharts({
+          dependencyUpdates: dependencyStatusResponse.data,
+          vulnerabilityStatus: vulnerabilityStatusResponse.data,
+          vulnerabilitySeverity: updatedSeverityData,
+          licenses: licenseDistributionResponse.data
+        });
+        
+        setShouldRefreshCharts(false);
+      };
 
-      const [
-        dependencyStatusResponse, 
-        vulnerabilityStatusResponse, 
-        vulnerabilitySeverityResponse,
-        licenseDistributionResponse
-      ] = await Promise.all([
-        api.charts.getDependencyStatusData(analysisId),
-        api.charts.getVulnerabilityStatusData(analysisId),
-        api.charts.getVulnerabilitySeverityData(analysisId),
-        api.charts.getLicenseDistributionData(analysisId)
-      ]);
-      
-      setCharts({
-        dependencyUpdates: dependencyStatusResponse.data,
-        vulnerabilityStatus: vulnerabilityStatusResponse.data,
-        vulnerabilitySeverity: vulnerabilitySeverityResponse.data,
-        licenses: licenseDistributionResponse.data
-      });
-      
-      setShouldRefreshCharts(false);
+      await loadChartData();
     } catch (error) {
       console.error('Error fetching chart data:', error);
       
@@ -136,7 +162,7 @@ const AnalysisDetail = () => {
     } finally {
       setChartsLoading(false);
     }
-  }, [analysisId, analysis, setCharts, setChartsLoading, setSnackbar]);
+  }, [analysisId, analysis, shouldRefreshCharts, setCharts, setChartsLoading, setSnackbar]);
 
   // Poll for vulnerability updates
   const pollForVulnerabilityUpdates = useCallback(async () => {

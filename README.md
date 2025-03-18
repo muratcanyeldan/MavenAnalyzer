@@ -137,3 +137,21 @@ curl -X GET 'http://localhost:8080/api/analyses/project/1'
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+![](src/main/resources/screenshots/Screenshot-analysis-history.png)
+
+![](src/main/resources/screenshots/Screenshot-charts.png)
+
+![](src/main/resources/screenshots/Screenshot-dashboard.png)
+
+![](src/main/resources/screenshots/Screenshot-dependencies.png)
+
+![](src/main/resources/screenshots/Screenshot-documentation.png)
+
+![](src/main/resources/screenshots/Screenshot-input-method.png)
+
+![](src/main/resources/screenshots/Screenshot-projects.png)
+
+![](src/main/resources/screenshots/Screenshot-settings.png)
+
+![](src/main/resources/screenshots/Screenshot-vulnerabilities.png)

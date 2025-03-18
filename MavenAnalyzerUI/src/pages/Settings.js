@@ -61,8 +61,7 @@ function TabPanel(props) {
 const loadSettingsFromAPI = async () => {
   try {
     const response = await api.settings.getSettings();
-    console.log('Settings loaded from API:', response.data);
-    
+
     // Map API response to frontend settings format
     const mappedSettings = {
       darkMode: false, // This is managed by the frontend
@@ -104,7 +103,6 @@ const saveSettingsToAPI = async (settings) => {
       showNotifications: settings.showNotifications
     };
     
-    console.log('Saving settings to API:', apiSettings);
     const response = await api.settings.updateSettings(apiSettings);
     
     // As a fallback, also save to localStorage
@@ -211,13 +209,9 @@ const Settings = () => {
   };
   
   const handleSave = () => {
-    // Save settings to backend API
-    console.log('Save button clicked, saving settings...');
     setSavingSettings(true);
     saveSettingsToAPI(settings)
       .then((response) => {
-        console.log('Settings saved successfully:', response);
-        // Show success message
         setSnackbar({
           open: true,
           message: 'Settings saved successfully',
@@ -233,13 +227,11 @@ const Settings = () => {
         });
       })
       .finally(() => {
-        console.log('Save operation finished');
         setSavingSettings(false);
       });
   };
   
   const handleReset = () => {
-    // Reset to default values
     const defaultSettings = {
       darkMode: false,
       showNotifications: true,
